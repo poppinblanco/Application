@@ -37,7 +37,7 @@ export default function Calendrier() {
 
   return (
     <>
-      <TopBar title="Calendrier" />
+      <TopBar title="Calendrier" tag="Agenda" tagClass="m-agenda-bg" />
       <main className="page">
         <div className="card">
           <div className="cal-nav">

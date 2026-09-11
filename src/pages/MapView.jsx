@@ -75,7 +75,7 @@ export default function MapView() {
 
   return (
     <>
-      <TopBar title="Carte" right={<button className="btn btn-outline btn-sm" onClick={locateMe}>📍 Ma position</button>} />
+      <TopBar title="Carte" tag="Localisation" tagClass="m-carte-bg" right={<button className="btn btn-outline btn-sm" onClick={locateMe}>📍 Ma position</button>} />
       <main className="page">
         {missing.length > 0 && (
           <div className="card" style={{ padding: 12 }}>

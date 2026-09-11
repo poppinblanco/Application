@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Check, Receipt as ReceiptIcon, Inbox, CalendarX } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
 import AppointmentForm from '../components/AppointmentForm';
@@ -54,7 +55,7 @@ export default function Agenda() {
               className="btn btn-accent btn-sm"
               onClick={(e) => { e.stopPropagation(); updateAppointment(a.id, { status: 'termine' }); }}
             >
-              ✓ Marquer terminé
+              <Check size={14} /> Marquer terminé
             </button>
           )}
           {a.status === 'termine' && a.prix != null && (
@@ -62,7 +63,7 @@ export default function Agenda() {
               className="btn btn-ghost btn-sm"
               onClick={(e) => { e.stopPropagation(); generateReceiptPdf({ appointment: a, client: clients.find((c) => c.id === a.clientId), business: settings }); }}
             >
-              🧾 Reçu PDF
+              <ReceiptIcon size={14} /> Reçu PDF
             </button>
           )}
         </div>
@@ -74,6 +75,8 @@ export default function Agenda() {
     <>
       <TopBar
         title="Rendez-vous"
+        tag="Agenda"
+        tagClass="m-agenda-bg"
         right={<button className="btn btn-primary btn-sm" disabled={clients.length === 0} onClick={() => setParams({ new: '1' })}>+ Ajouter</button>}
       />
       <main className="page">
@@ -81,7 +84,7 @@ export default function Agenda() {
 
         <div className="card">
           <div className="card-title">À venir</div>
-          {upcoming.length === 0 ? <div className="empty"><span className="emoji">📭</span>Aucun rendez-vous prévu.</div> : upcoming.map(row)}
+          {upcoming.length === 0 ? <div className="empty"><Inbox size={32} />Aucun rendez-vous prévu.</div> : upcoming.map(row)}
         </div>
 
         <div className="card">
@@ -97,7 +100,7 @@ export default function Agenda() {
             ))}
           </div>
           {done.length === 0 ? (
-            <div className="empty"><span className="emoji">🗓️</span>Aucune intervention enregistrée.</div>
+            <div className="empty"><CalendarX size={32} />Aucune intervention enregistrée.</div>
           ) : (
             groups.map((g) => (
               <div key={g.key}>

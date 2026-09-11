@@ -25,7 +25,7 @@ export default function Notes() {
 
   return (
     <>
-      <TopBar title="Pense-bête" />
+      <TopBar title="Pense-bête" tag="Notes" tagClass="m-notes-bg" />
       <main className="page">
         <form className="card" onSubmit={handleAdd}>
           <div className="field">

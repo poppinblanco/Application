@@ -15,6 +15,7 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
   const [notes, setNotes] = useState(existing?.notes || '');
   const [tags, setTags] = useState(existing?.tags || []);
   const [tagInput, setTagInput] = useState('');
+  const [statut, setStatut] = useState(existing?.statut || 'active');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
 
@@ -38,7 +39,7 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
       else { lat = null; lng = null; }
     } else if (!adresse.trim()) { lat = null; lng = null; }
 
-    const data = { nom: nom.trim(), telephone: telephone.trim(), email: email.trim(), adresse: adresse.trim(), notes: notes.trim(), tags, lat, lng };
+    const data = { nom: nom.trim(), telephone: telephone.trim(), email: email.trim(), adresse: adresse.trim(), notes: notes.trim(), tags, statut, lat, lng };
     if (existing) updateClient(existing.id, data);
     else addClient(data);
     setSaving(false);
@@ -72,6 +73,14 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
         <div className="field">
           <label>Adresse</label>
           <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Adresse, ville" />
+        </div>
+        <div className="field">
+          <label>Statut (pipeline)</label>
+          <select value={statut} onChange={(e) => setStatut(e.target.value)}>
+            <option value="prospect">Prospect</option>
+            <option value="active">Cliente active</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
         <div className="field">
           <label>Tags</label>

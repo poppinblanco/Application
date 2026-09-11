@@ -34,6 +34,7 @@ export default function Import() {
           adresse: c.adresse || '',
           notes: c.notes || '',
           tags: [],
+          statut: 'active',
           lat: c.lat ?? null,
           lng: c.lng ?? null,
           createdAt: new Date().toISOString()

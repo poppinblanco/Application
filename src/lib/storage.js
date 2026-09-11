@@ -2,7 +2,11 @@ const KEYS = {
   clients: 'crm_clients',
   appointments: 'crm_appointments',
   notes: 'crm_notes',
-  settings: 'crm_settings'
+  settings: 'crm_settings',
+  services: 'crm_services',
+  products: 'crm_products',
+  quotes: 'crm_quotes',
+  invoices: 'crm_invoices'
 };
 
 export function uid() {
@@ -22,6 +26,16 @@ export function loadSettings() {
 }
 export function saveSettingsRaw(data) {
   localStorage.setItem(KEYS.settings, JSON.stringify(data));
+}
+
+export function nextDocNumber(kind) {
+  const settings = loadSettings();
+  const field = kind === 'facture' ? 'nextInvoiceNumber' : 'nextQuoteNumber';
+  const prefix = kind === 'facture' ? 'F' : 'D';
+  const n = settings[field] || 1;
+  saveSettingsRaw({ ...settings, [field]: n + 1 });
+  const year = new Date().getFullYear();
+  return `${prefix}-${year}-${String(n).padStart(4, '0')}`;
 }
 
 /* ---------- IndexedDB pour les photos/vidéos ---------- */
