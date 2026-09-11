@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   KanbanSquare, Sparkles, Package, Receipt, BarChart3, StickyNote,
-  Settings, Upload, Mail
+  Settings, Upload, IdCard
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 
@@ -10,7 +10,7 @@ const GROUPS = [
     title: 'Clientèle',
     tiles: [
       { to: '/pipeline', icon: KanbanSquare, label: 'Pipeline', cls: 'm-pipeline-bg' },
-      { to: '/marketing', icon: Mail, label: 'Email groupé', cls: 'm-marketing-bg' }
+      { to: '/contacts', icon: IdCard, label: 'Contacts', cls: 'm-marketing-bg' }
     ]
   },
   {
