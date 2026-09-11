@@ -5,7 +5,7 @@ import TopBar from '../components/TopBar';
 import { fmtEuro, fmtEuroH, fmtDateTime, initials, tauxHoraire } from '../utils/format';
 
 export default function Dashboard() {
-  const { clients, appointments, products, invoices, settings, ready } = useData();
+  const { clients, appointments, products, invoices, services, settings, ready } = useData();
 
   if (!ready) return <div className="empty" style={{ paddingTop: 60 }}>Chargement…</div>;
 
@@ -18,10 +18,11 @@ export default function Dashboard() {
     .filter((a) => a.status === 'planifie' && new Date(a.date) >= now)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  const doneWithRate = appointments.filter((a) => a.status === 'termine' && tauxHoraire(a, settings.chargesPct) !== null);
+  const doneWithRate = appointments.filter((a) => a.status === 'termine' && tauxHoraire(a, settings.chargesPct, services) !== null);
   const avgRate = doneWithRate.length
-    ? doneWithRate.reduce((s, a) => s + tauxHoraire(a, settings.chargesPct), 0) / doneWithRate.length
+    ? doneWithRate.reduce((s, a) => s + tauxHoraire(a, settings.chargesPct, services), 0) / doneWithRate.length
     : null;
+  const doneCount = appointments.filter((a) => a.status === 'termine').length;
 
   const lowStock = products.filter((p) => p.quantite <= p.seuilAlerte);
   const unpaidInvoices = invoices.filter((i) => i.statut !== 'payee');
@@ -46,8 +47,16 @@ export default function Dashboard() {
           </div>
           <div className="kpi-card grad-stats">
             <div className="kpi-label">Taux horaire</div>
-            <div className="kpi-value">{avgRate !== null ? fmtEuroH(avgRate) : '—'}</div>
-            <div className="kpi-sub">après charges</div>
+            <div className="kpi-value" style={avgRate === null ? { fontSize: 13, fontWeight: 700 } : undefined}>
+              {avgRate !== null ? fmtEuroH(avgRate) : (doneCount === 0 ? 'Aucune donnée' : 'Durée manquante')}
+            </div>
+            <div className="kpi-sub">
+              {avgRate !== null ? 'après charges' : (
+                <Link to="/stats" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                  {doneCount === 0 ? 'Terminez un rendez-vous' : 'Ajoutez une durée →'}
+                </Link>
+              )}
+            </div>
           </div>
           <div className="kpi-card grad-pipeline">
             <div className="kpi-label">Clientèle</div>

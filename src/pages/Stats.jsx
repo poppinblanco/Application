@@ -6,7 +6,7 @@ import TopBar from '../components/TopBar';
 import { fmtEuro, fmtEuroH, sumPrix, tauxHoraire, capitalize } from '../utils/format';
 
 export default function Stats() {
-  const { clients, appointments, settings, ready, saveSettings } = useData();
+  const { clients, appointments, services, settings, ready, saveSettings } = useData();
   const [chargesInput, setChargesInput] = useState(settings.chargesPct ?? 21);
 
   const done = useMemo(() => appointments.filter((a) => a.status === 'termine'), [appointments]);
@@ -33,19 +33,19 @@ export default function Stats() {
         const list = appointments.filter((a) => a.clientId === c.id && a.prix != null);
         const totalEarned = sumPrix(list.filter((a) => a.status === 'termine'));
         const totalPrevu = sumPrix(list.filter((a) => a.status === 'planifie'));
-        const withRate = list.filter((a) => a.status === 'termine' && tauxHoraire(a, settings.chargesPct) !== null);
-        const avgRate = withRate.length ? withRate.reduce((s, a) => s + tauxHoraire(a, settings.chargesPct), 0) / withRate.length : null;
+        const withRate = list.filter((a) => a.status === 'termine' && tauxHoraire(a, settings.chargesPct, services) !== null);
+        const avgRate = withRate.length ? withRate.reduce((s, a) => s + tauxHoraire(a, settings.chargesPct, services), 0) / withRate.length : null;
         return { client: c, list, totalEarned, totalPrevu, avgRate };
       })
       .filter((x) => x.list.length > 0)
       .sort((a, b) => b.totalEarned - a.totalEarned);
-  }, [clients, appointments, settings.chargesPct]);
+  }, [clients, appointments, services, settings.chargesPct]);
 
   const grandTotal = perClient.reduce((s, x) => s + x.totalEarned, 0);
-  const doneWithRate = done.filter((a) => tauxHoraire(a, settings.chargesPct) !== null);
-  const globalAvgRate = doneWithRate.length ? doneWithRate.reduce((s, a) => s + tauxHoraire(a, settings.chargesPct), 0) / doneWithRate.length : null;
-  const bestRate = doneWithRate.length ? doneWithRate.reduce((a, b) => (tauxHoraire(b, settings.chargesPct) > tauxHoraire(a, settings.chargesPct) ? b : a)) : null;
-  const worstRate = doneWithRate.length ? doneWithRate.reduce((a, b) => (tauxHoraire(b, settings.chargesPct) < tauxHoraire(a, settings.chargesPct) ? b : a)) : null;
+  const doneWithRate = done.filter((a) => tauxHoraire(a, settings.chargesPct, services) !== null);
+  const globalAvgRate = doneWithRate.length ? doneWithRate.reduce((s, a) => s + tauxHoraire(a, settings.chargesPct, services), 0) / doneWithRate.length : null;
+  const bestRate = doneWithRate.length ? doneWithRate.reduce((a, b) => (tauxHoraire(b, settings.chargesPct, services) > tauxHoraire(a, settings.chargesPct, services) ? b : a)) : null;
+  const worstRate = doneWithRate.length ? doneWithRate.reduce((a, b) => (tauxHoraire(b, settings.chargesPct, services) < tauxHoraire(a, settings.chargesPct, services) ? b : a)) : null;
   const clientNameOf = (id) => clients.find((c) => c.id === id)?.nom || '(cliente supprimée)';
 
   function handleChargesBlur() {
@@ -84,7 +84,10 @@ export default function Stats() {
             <input type="number" step="0.5" min="0" value={chargesInput} onChange={(e) => setChargesInput(e.target.value)} onBlur={handleChargesBlur} />
           </div>
           {globalAvgRate === null ? (
-            <div className="empty">Renseignez la durée des rendez-vous pour voir votre taux horaire réel.</div>
+            <div className="empty">
+              Renseignez la durée d'au moins un rendez-vous terminé (ou associez-le à une prestation du
+              catalogue qui a une durée) pour voir votre taux horaire réel.
+            </div>
           ) : (
             <div className="row">
               <div className="kpi-card" style={{ flex: 1, textAlign: 'center' }}>
@@ -94,14 +97,14 @@ export default function Stats() {
               {bestRate && (
                 <div className="kpi-card" style={{ flex: 1, textAlign: 'center' }}>
                   <div className="kpi-label" style={{ color: 'var(--accent)' }}>Meilleure</div>
-                  <div className="kpi-value" style={{ fontSize: 17 }}>{fmtEuroH(tauxHoraire(bestRate, settings.chargesPct))}</div>
+                  <div className="kpi-value" style={{ fontSize: 17 }}>{fmtEuroH(tauxHoraire(bestRate, settings.chargesPct, services))}</div>
                   <div className="kpi-sub">{clientNameOf(bestRate.clientId)}</div>
                 </div>
               )}
               {worstRate && (
                 <div className="kpi-card" style={{ flex: 1, textAlign: 'center' }}>
                   <div className="kpi-label" style={{ color: 'var(--danger)' }}>À revoir</div>
-                  <div className="kpi-value" style={{ fontSize: 17 }}>{fmtEuroH(tauxHoraire(worstRate, settings.chargesPct))}</div>
+                  <div className="kpi-value" style={{ fontSize: 17 }}>{fmtEuroH(tauxHoraire(worstRate, settings.chargesPct, services))}</div>
                   <div className="kpi-sub">{clientNameOf(worstRate.clientId)}</div>
                 </div>
               )}

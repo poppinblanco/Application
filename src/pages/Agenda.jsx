@@ -9,7 +9,7 @@ import { fmtDateTime, fmtEuro, fmtEuroH, groupByPeriod, sumPrix, tauxHoraire } f
 import { generateReceiptPdf } from '../utils/receipt';
 
 export default function Agenda() {
-  const { clients, appointments, settings, ready, updateAppointment } = useData();
+  const { clients, appointments, services, settings, ready, updateAppointment } = useData();
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState(null);
   const [groupBy, setGroupBy] = useState('jour');
@@ -28,7 +28,7 @@ export default function Agenda() {
   function closeNew() { setParams({}, { replace: true }); }
 
   function row(a) {
-    const rate = tauxHoraire(a, settings.chargesPct);
+    const rate = tauxHoraire(a, settings.chargesPct, services);
     return (
       <div className="divider-item" key={a.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(a)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
