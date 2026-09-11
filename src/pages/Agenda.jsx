@@ -4,6 +4,7 @@ import { Check, Receipt as ReceiptIcon, Inbox, CalendarX } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
 import AppointmentForm from '../components/AppointmentForm';
+import MonthCalendar from '../components/MonthCalendar';
 import { fmtDateTime, fmtEuro, fmtEuroH, groupByPeriod, sumPrix, tauxHoraire } from '../utils/format';
 import { generateReceiptPdf } from '../utils/receipt';
 
@@ -12,6 +13,7 @@ export default function Agenda() {
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState(null);
   const [groupBy, setGroupBy] = useState('jour');
+  const [view, setView] = useState('liste');
   const showNew = params.get('new') === '1';
 
   if (!ready) return <div className="empty" style={{ paddingTop: 60 }}>Chargement…</div>;
@@ -82,34 +84,45 @@ export default function Agenda() {
       <main className="page">
         {clients.length === 0 && <div className="card"><div className="empty">Ajoutez d'abord une cliente.</div></div>}
 
-        <div className="card">
-          <div className="card-title">À venir</div>
-          {upcoming.length === 0 ? <div className="empty"><Inbox size={32} />Aucun rendez-vous prévu.</div> : upcoming.map(row)}
+        <div className="chip-row">
+          <button className={`chip ${view === 'liste' ? 'active' : ''}`} onClick={() => setView('liste')}>📋 Liste</button>
+          <button className={`chip ${view === 'calendrier' ? 'active' : ''}`} onClick={() => setView('calendrier')}>📅 Calendrier</button>
         </div>
 
-        <div className="card">
-          <div className="card-title">Historique</div>
-          {done.length > 0 && (
-            <div style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 800, padding: '8px 12px', borderRadius: 8, fontSize: 13, marginBottom: 12 }}>
-              💰 Total encaissé : {fmtEuro(totalAll)}
+        {view === 'calendrier' ? (
+          <MonthCalendar />
+        ) : (
+          <>
+            <div className="card">
+              <div className="card-title">À venir</div>
+              {upcoming.length === 0 ? <div className="empty"><Inbox size={32} />Aucun rendez-vous prévu.</div> : upcoming.map(row)}
             </div>
-          )}
-          <div className="chip-row">
-            {['jour', 'semaine', 'mois'].map((g) => (
-              <button key={g} className={`chip ${groupBy === g ? 'active' : ''}`} onClick={() => setGroupBy(g)}>Par {g}</button>
-            ))}
-          </div>
-          {done.length === 0 ? (
-            <div className="empty"><CalendarX size={32} />Aucune intervention enregistrée.</div>
-          ) : (
-            groups.map((g) => (
-              <div key={g.key}>
-                <div className="section-header"><span>{g.label} ({g.items.length})</span><span>{fmtEuro(sumPrix(g.items))}</span></div>
-                {g.items.map(row)}
+
+            <div className="card">
+              <div className="card-title">Historique</div>
+              {done.length > 0 && (
+                <div style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 800, padding: '8px 12px', borderRadius: 8, fontSize: 13, marginBottom: 12 }}>
+                  💰 Total encaissé : {fmtEuro(totalAll)}
+                </div>
+              )}
+              <div className="chip-row">
+                {['jour', 'semaine', 'mois'].map((g) => (
+                  <button key={g} className={`chip ${groupBy === g ? 'active' : ''}`} onClick={() => setGroupBy(g)}>Par {g}</button>
+                ))}
               </div>
-            ))
-          )}
-        </div>
+              {done.length === 0 ? (
+                <div className="empty"><CalendarX size={32} />Aucune intervention enregistrée.</div>
+              ) : (
+                groups.map((g) => (
+                  <div key={g.key}>
+                    <div className="section-header"><span>{g.label} ({g.items.length})</span><span>{fmtEuro(sumPrix(g.items))}</span></div>
+                    {g.items.map(row)}
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </main>
       {showNew && <AppointmentForm onClose={closeNew} />}
       {editing && <AppointmentForm existing={editing} onClose={() => setEditing(null)} />}

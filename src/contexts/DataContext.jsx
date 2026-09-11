@@ -11,6 +11,7 @@ export function DataProvider({ children }) {
   const [products, setProducts] = useState(() => loadCollection('products'));
   const [quotes, setQuotes] = useState(() => loadCollection('quotes'));
   const [invoices, setInvoices] = useState(() => loadCollection('invoices'));
+  const [campaigns, setCampaigns] = useState(() => loadCollection('campaigns'));
   const [settings, setSettings] = useState(() => ({ chargesPct: 21, ...loadSettings() }));
 
   function persist(name, list) {
@@ -36,9 +37,10 @@ export function DataProvider({ children }) {
   const productCrud = makeCrud(products, setProducts, 'products', { quantite: 0, seuilAlerte: 2 });
   const quoteCrud = makeCrud(quotes, setQuotes, 'quotes', { statut: 'brouillon', items: [] });
   const invoiceCrud = makeCrud(invoices, setInvoices, 'invoices', { statut: 'impayee', items: [] });
+  const campaignCrud = makeCrud(campaigns, setCampaigns, 'campaigns', {});
 
   const api = useMemo(() => ({
-    clients, appointments, notes, services, products, quotes, invoices, settings, ready: true,
+    clients, appointments, notes, services, products, quotes, invoices, campaigns, settings, ready: true,
 
     addClient(data) {
       const item = { id: uid(), tags: [], photos: [], statut: 'active', createdAt: new Date().toISOString(), ...data };
@@ -122,6 +124,8 @@ export function DataProvider({ children }) {
     },
     updateInvoice: invoiceCrud.update, deleteInvoice: invoiceCrud.remove,
 
+    addCampaign: campaignCrud.add, deleteCampaign: campaignCrud.remove,
+
     saveSettings(data) {
       setSettings((prev) => { const next = { ...prev, ...data }; saveSettingsRaw(next); return next; });
     },
@@ -131,7 +135,7 @@ export function DataProvider({ children }) {
       setAppointments((prev) => { const next = [...prev, ...newAppointments]; persist('appointments', next); return next; });
       setNotes((prev) => { const next = [...prev, ...newNotes]; persist('notes', next); return next; });
     }
-  }), [clients, appointments, notes, services, products, quotes, invoices, settings]);
+  }), [clients, appointments, notes, services, products, quotes, invoices, campaigns, settings]);
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>;
 }

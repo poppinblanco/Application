@@ -12,8 +12,8 @@ tout en gardant le même principe : toutes les données restent sur votre appare
 - **Catalogue de prestations** : liste de vos prestations à prix fixe, réutilisable en un tap sur chaque rendez-vous
 - **Gestion de stock** : mèches et produits avec seuil d'alerte, décompte automatique à chaque prestation terminée
 - **Devis & Factures** : documents numérotés (D-2026-0001, F-2026-0001), lignes détaillées, conversion devis → facture, export PDF professionnel
-- **Rendez-vous** : liste à venir/historique groupé par jour/semaine/mois, prix, durée, coût produits, photos
-- **Calendrier** : vue mensuelle avec points de couleur par statut
+- **Rendez-vous** : liste à venir/historique groupé par jour/semaine/mois, prix, durée, coût produits, photos, avec bascule Liste/Calendrier directement dans l'onglet Agenda
+- **Email groupé** : préparez un message (objet + texte) et envoyez-le à vos clientes par segment (prospects/actives/inactives) ou à des adresses libres ; l'application ouvre votre appli email habituelle avec les destinataires en copie cachée — aucun envoi automatique, aucun serveur
 - **Carte** : localisation des clientes et interventions (OpenStreetMap, gratuit, sans clé), géolocalisation de votre position, itinéraire — nécessite internet uniquement au moment d'afficher la carte ou de localiser une adresse
 - **Statistiques** : revenu mensuel en graphique, taux horaire réel après charges, classement des clientes
 - **Reçus PDF** : génération en un clic pour chaque prestation terminée, entièrement hors ligne

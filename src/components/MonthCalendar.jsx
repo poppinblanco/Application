@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
-import TopBar from '../components/TopBar';
-import Modal from '../components/Modal';
-import AppointmentForm from '../components/AppointmentForm';
+import Modal from './Modal';
+import AppointmentForm from './AppointmentForm';
 import { capitalize, fmtEuro } from '../utils/format';
 
-export default function Calendrier() {
-  const { clients, appointments, ready } = useData();
+export default function MonthCalendar() {
+  const { clients, appointments } = useData();
   const [month, setMonth] = useState(new Date());
   const [dayKey, setDayKey] = useState(null);
   const [creatingFor, setCreatingFor] = useState(null);
@@ -20,8 +19,6 @@ export default function Calendrier() {
     });
     return map;
   }, [appointments]);
-
-  if (!ready) return <div className="empty" style={{ paddingTop: 60 }}>Chargement…</div>;
 
   const clientName = (cid) => clients.find((c) => c.id === cid)?.nom || '(cliente supprimée)';
   const year = month.getFullYear();
@@ -37,39 +34,36 @@ export default function Calendrier() {
 
   return (
     <>
-      <TopBar title="Calendrier" tag="Agenda" tagClass="m-agenda-bg" />
-      <main className="page">
-        <div className="card">
-          <div className="cal-nav">
-            <button onClick={() => setMonth(new Date(year, m - 1, 1))}>‹</button>
-            <h3>{capitalize(month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))}</h3>
-            <button onClick={() => setMonth(new Date(year, m + 1, 1))}>›</button>
-          </div>
-          <div className="calendar-grid">
-            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => <div className="dow" key={d}>{d}</div>)}
-            {cells.map((d, i) => {
-              if (!d) return <div className="cal-day empty-day" key={'e' + i} />;
-              const key = new Date(year, m, d).toISOString().slice(0, 10);
-              const events = byDay[key] || [];
-              const hasPlanifie = events.some((e) => e.status === 'planifie');
-              const hasTermine = events.some((e) => e.status === 'termine');
-              return (
-                <div key={key} className={`cal-day ${key === todayStr ? 'today' : ''}`} onClick={() => setDayKey(key)}>
-                  <span>{d}</span>
-                  <div className="dots">
-                    {hasPlanifie && <span className="dot" style={{ background: 'var(--warning)' }} />}
-                    {hasTermine && <span className="dot" style={{ background: 'var(--accent)' }} />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12, display: 'flex', gap: 14 }}>
-            <span><span style={{ color: 'var(--warning)' }}>●</span> Prévu</span>
-            <span><span style={{ color: 'var(--accent)' }}>●</span> Terminé</span>
-          </div>
+      <div className="card">
+        <div className="cal-nav">
+          <button onClick={() => setMonth(new Date(year, m - 1, 1))}>‹</button>
+          <h3>{capitalize(month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))}</h3>
+          <button onClick={() => setMonth(new Date(year, m + 1, 1))}>›</button>
         </div>
-      </main>
+        <div className="calendar-grid">
+          {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => <div className="dow" key={d}>{d}</div>)}
+          {cells.map((d, i) => {
+            if (!d) return <div className="cal-day empty-day" key={'e' + i} />;
+            const key = new Date(year, m, d).toISOString().slice(0, 10);
+            const events = byDay[key] || [];
+            const hasPlanifie = events.some((e) => e.status === 'planifie');
+            const hasTermine = events.some((e) => e.status === 'termine');
+            return (
+              <div key={key} className={`cal-day ${key === todayStr ? 'today' : ''}`} onClick={() => setDayKey(key)}>
+                <span>{d}</span>
+                <div className="dots">
+                  {hasPlanifie && <span className="dot" style={{ background: 'var(--warning)' }} />}
+                  {hasTermine && <span className="dot" style={{ background: 'var(--accent)' }} />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12, display: 'flex', gap: 14 }}>
+          <span><span style={{ color: 'var(--warning)' }}>●</span> Prévu</span>
+          <span><span style={{ color: 'var(--accent)' }}>●</span> Terminé</span>
+        </div>
+      </div>
 
       {dayKey && (
         <Modal onClose={() => setDayKey(null)} title={capitalize(new Date(dayKey + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}>

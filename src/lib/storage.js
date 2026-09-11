@@ -6,7 +6,8 @@ const KEYS = {
   services: 'crm_services',
   products: 'crm_products',
   quotes: 'crm_quotes',
-  invoices: 'crm_invoices'
+  invoices: 'crm_invoices',
+  campaigns: 'crm_campaigns'
 };
 
 export function uid() {
