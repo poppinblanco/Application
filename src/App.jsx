@@ -14,7 +14,7 @@ import Pipeline from './pages/Pipeline';
 import Catalogue from './pages/Catalogue';
 import Stock from './pages/Stock';
 import Factures from './pages/Factures';
-import Marketing from './pages/Marketing';
+import Contacts from './pages/Contacts';
 
 export default function App() {
   return (
@@ -29,7 +29,7 @@ export default function App() {
         <Route path="/catalogue" element={<Catalogue />} />
         <Route path="/stock" element={<Stock />} />
         <Route path="/factures" element={<Factures />} />
-        <Route path="/marketing" element={<Marketing />} />
+        <Route path="/contacts" element={<Contacts />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/notes" element={<Notes />} />
         <Route path="/reglages" element={<Settings />} />
