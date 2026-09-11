@@ -23,15 +23,20 @@ export function initials(name) {
 export function sumPrix(list) {
   return list.reduce((s, i) => s + (parseFloat(i.prix) || 0), 0);
 }
-export function dureeTotaleH(i) {
-  return ((parseFloat(i.dureeMin) || 0) + (parseFloat(i.trajetMin) || 0)) / 60;
+export function dureeTotaleH(i, services) {
+  let dureeMin = parseFloat(i.dureeMin) || 0;
+  if (!dureeMin && i.serviceId && services) {
+    const service = services.find((s) => s.id === i.serviceId);
+    if (service?.dureeMin) dureeMin = parseFloat(service.dureeMin) || 0;
+  }
+  return (dureeMin + (parseFloat(i.trajetMin) || 0)) / 60;
 }
 export function netApresCharges(i, chargesPct) {
   const net = (parseFloat(i.prix) || 0) - (parseFloat(i.coutProduits) || 0);
   return net * (1 - (chargesPct || 0) / 100);
 }
-export function tauxHoraire(i, chargesPct) {
-  const h = dureeTotaleH(i);
+export function tauxHoraire(i, chargesPct, services) {
+  const h = dureeTotaleH(i, services);
   if (h <= 0) return null;
   return netApresCharges(i, chargesPct) / h;
 }
