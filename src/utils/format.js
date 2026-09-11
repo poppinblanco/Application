@@ -15,8 +15,9 @@ export function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1
 
 export function initials(name) {
   if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
+  const letters = (name.match(/\p{L}+/gu) || []).slice(0, 2);
+  if (letters.length === 0) return '?';
+  return letters.map((w) => w[0]).join('').toUpperCase();
 }
 
 export function sumPrix(list) {

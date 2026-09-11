@@ -4,11 +4,10 @@ import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
 import AppointmentForm from '../components/AppointmentForm';
 import { fmtDateTime, fmtEuro, fmtEuroH, groupByPeriod, sumPrix, tauxHoraire } from '../utils/format';
-import { updateItem } from '../lib/firestore';
 import { generateReceiptPdf } from '../utils/receipt';
 
 export default function Agenda() {
-  const { clients, appointments, settings, ready } = useData();
+  const { clients, appointments, settings, ready, updateAppointment } = useData();
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState(null);
   const [groupBy, setGroupBy] = useState('jour');
@@ -53,7 +52,7 @@ export default function Agenda() {
           {a.status === 'planifie' && (
             <button
               className="btn btn-accent btn-sm"
-              onClick={(e) => { e.stopPropagation(); updateItem('appointments', a.id, { status: 'termine' }); }}
+              onClick={(e) => { e.stopPropagation(); updateAppointment(a.id, { status: 'termine' }); }}
             >
               ✓ Marquer terminé
             </button>

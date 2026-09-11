@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
@@ -7,19 +7,34 @@ import AppointmentForm from '../components/AppointmentForm';
 import { fmtDateTime, fmtEuro, initials, sumPrix } from '../utils/format';
 import { itineraryUrl } from '../utils/geocode';
 import { generateReceiptPdf } from '../utils/receipt';
+import { getMedia, isVideoSrc } from '../lib/storage';
 
 export default function ClientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clients, appointments, settings, ready } = useData();
+  const { clients, appointments, settings } = useData();
   const [editing, setEditing] = useState(false);
   const [addingRdv, setAddingRdv] = useState(false);
   const [editingRdv, setEditingRdv] = useState(null);
   const [lightbox, setLightbox] = useState(null);
-
-  if (!ready) return <div className="empty" style={{ paddingTop: 60 }}>Chargement…</div>;
+  const [gallery, setGallery] = useState([]);
 
   const client = clients.find((c) => c.id === id);
+  const history = appointments
+    .filter((a) => a.clientId === id)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  useEffect(() => {
+    if (!client) return;
+    let cancelled = false;
+    (async () => {
+      const own = await getMedia('client:' + client.id);
+      const fromRdv = (await Promise.all(history.map((a) => getMedia(a.id)))).flat();
+      if (!cancelled) setGallery([...own, ...fromRdv]);
+    })();
+    return () => { cancelled = true; };
+  }, [client, appointments.length]);
+
   if (!client) {
     return (
       <>
@@ -29,11 +44,7 @@ export default function ClientDetail() {
     );
   }
 
-  const history = appointments
-    .filter((a) => a.clientId === id)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
   const totalEarned = sumPrix(history.filter((a) => a.status === 'termine'));
-  const allPhotos = [...(client.photos || []), ...history.flatMap((a) => a.photos || [])];
 
   return (
     <>
@@ -68,13 +79,13 @@ export default function ClientDetail() {
           {client.notes && <div className="item-sub" style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>📝 {client.notes}</div>}
         </div>
 
-        {allPhotos.length > 0 && (
+        {gallery.length > 0 && (
           <div className="card">
             <div className="card-title">Photos</div>
             <div className="photo-grid">
-              {allPhotos.map((p, i) => (
-                <div className="photo-thumb" key={p.path || i} onClick={() => setLightbox(p.url)}>
-                  <img src={p.url} alt="" />
+              {gallery.map((src, i) => (
+                <div className="photo-thumb" key={i} onClick={() => setLightbox(src)}>
+                  {isVideoSrc(src) ? <video src={src} muted /> : <img src={src} alt="" />}
                 </div>
               ))}
             </div>
@@ -90,8 +101,8 @@ export default function ClientDetail() {
             <div className="empty"><span className="emoji">📅</span>Aucun rendez-vous pour l'instant.</div>
           ) : (
             history.map((a) => (
-              <div key={a.id} className="divider-item" onClick={() => setEditingRdv(a)} style={{ cursor: 'pointer' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <div key={a.id} className="divider-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }} onClick={() => setEditingRdv(a)}>
                   <div>
                     <span className={`pill ${a.status === 'planifie' ? 'pill-planned' : a.status === 'annule' ? 'pill-cancelled' : 'pill-done'}`}>
                       {a.status === 'planifie' ? 'Prévu' : a.status === 'annule' ? 'Annulé' : 'Terminé'}
@@ -105,7 +116,7 @@ export default function ClientDetail() {
                   <button
                     className="btn btn-ghost btn-sm"
                     style={{ marginTop: 8 }}
-                    onClick={(e) => { e.stopPropagation(); generateReceiptPdf({ appointment: a, client, business: settings }); }}
+                    onClick={() => generateReceiptPdf({ appointment: a, client, business: settings })}
                   >
                     🧾 Reçu PDF
                   </button>
@@ -123,7 +134,7 @@ export default function ClientDetail() {
       {editingRdv && <AppointmentForm existing={editingRdv} onClose={() => setEditingRdv(null)} />}
       {lightbox && (
         <div className="lightbox" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" />
+          {isVideoSrc(lightbox) ? <video src={lightbox} controls autoPlay /> : <img src={lightbox} alt="" />}
         </div>
       )}
     </>

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import MediaGallery from './MediaGallery';
 import { geocode } from '../utils/geocode';
-import { addItem, updateItem, deleteItem, uploadPhoto, deletePhoto } from '../lib/firestore';
+import { useData } from '../contexts/DataContext';
 
 const TAG_SUGGESTIONS = ['Enfant', 'Adulte', 'Homme', 'Régulière', 'Nouvelle', 'À domicile'];
 
 export default function ClientForm({ existing, onClose, onDeleted }) {
+  const { addClient, updateClient, deleteClient } = useData();
   const [nom, setNom] = useState(existing?.nom || '');
   const [telephone, setTelephone] = useState(existing?.telephone || '');
   const [email, setEmail] = useState(existing?.email || '');
@@ -13,7 +15,6 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
   const [notes, setNotes] = useState(existing?.notes || '');
   const [tags, setTags] = useState(existing?.tags || []);
   const [tagInput, setTagInput] = useState('');
-  const [photos, setPhotos] = useState(existing?.photos || []);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
 
@@ -24,24 +25,6 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
   }
   function removeTag(t) { setTags(tags.filter((x) => x !== t)); }
 
-  async function handlePhotoUpload(e) {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setStatus('Ajout des photos...');
-    const key = existing?.id || 'temp_' + Date.now();
-    const uploaded = [];
-    for (const f of files) {
-      try { uploaded.push(await uploadPhoto(`clients/${key}`, f)); } catch (err) { /* skip */ }
-    }
-    setPhotos((p) => [...p, ...uploaded]);
-    setStatus('');
-  }
-  async function removePhoto(idx) {
-    const p = photos[idx];
-    if (p?.path) await deletePhoto(p.path);
-    setPhotos(photos.filter((_, i) => i !== idx));
-  }
-
   async function handleSave(e) {
     e.preventDefault();
     if (!nom.trim()) { setStatus('Le nom est obligatoire.'); return; }
@@ -49,27 +32,22 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
     let lat = existing?.lat ?? null;
     let lng = existing?.lng ?? null;
     if (adresse.trim() && adresse !== existing?.adresse) {
-      setStatus('Localisation de l’adresse...');
+      setStatus(navigator.onLine ? 'Localisation de l’adresse...' : 'Hors ligne : localisation impossible pour le moment.');
       const coords = await geocode(adresse);
       if (coords) { lat = coords.lat; lng = coords.lng; }
       else { lat = null; lng = null; }
     } else if (!adresse.trim()) { lat = null; lng = null; }
 
-    const data = { nom: nom.trim(), telephone: telephone.trim(), email: email.trim(), adresse: adresse.trim(), notes: notes.trim(), tags, photos, lat, lng };
-    try {
-      if (existing) await updateItem('clients', existing.id, data);
-      else await addItem('clients', data);
-      onClose();
-    } catch (err) {
-      setStatus("Erreur lors de l'enregistrement.");
-    } finally {
-      setSaving(false);
-    }
+    const data = { nom: nom.trim(), telephone: telephone.trim(), email: email.trim(), adresse: adresse.trim(), notes: notes.trim(), tags, lat, lng };
+    if (existing) updateClient(existing.id, data);
+    else addClient(data);
+    setSaving(false);
+    onClose();
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!confirm("Supprimer cette cliente et son historique de rendez-vous ?")) return;
-    await deleteItem('clients', existing.id);
+    deleteClient(existing.id);
     onClose();
     onDeleted?.();
   }
@@ -119,18 +97,12 @@ export default function ClientForm({ existing, onClose, onDeleted }) {
           <label>Notes (coiffure préférée, allergies...)</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
-        <div className="field">
-          <label>Photos</label>
-          <div className="photo-grid">
-            {photos.map((p, i) => (
-              <div className="photo-thumb" key={p.path || i}>
-                <img src={p.url} alt="" />
-                <button type="button" className="rm" onClick={() => removePhoto(i)}>×</button>
-              </div>
-            ))}
+        {existing && (
+          <div className="field">
+            <label>Photos / vidéos</label>
+            <MediaGallery mediaKey={'client:' + existing.id} />
           </div>
-          <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} style={{ marginTop: 8 }} />
-        </div>
+        )}
         {status && <div className="status-msg">{status}</div>}
         <div className="row" style={{ marginTop: 14 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} disabled={saving} type="submit">

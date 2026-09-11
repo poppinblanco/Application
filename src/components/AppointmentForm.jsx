@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import MediaGallery from './MediaGallery';
 import { geocode } from '../utils/geocode';
-import { addItem, updateItem, deleteItem, uploadPhoto, deletePhoto } from '../lib/firestore';
 import { useData } from '../contexts/DataContext';
 
 function toLocalInput(iso) {
@@ -11,7 +11,7 @@ function toLocalInput(iso) {
 }
 
 export default function AppointmentForm({ existing, defaultClientId, defaultDate, onClose }) {
-  const { clients } = useData();
+  const { clients, addAppointment, updateAppointment, deleteAppointment } = useData();
   const [clientId, setClientId] = useState(existing?.clientId || defaultClientId || clients[0]?.id || '');
   const [date, setDate] = useState(toLocalInput(existing?.date || defaultDate));
   const [status, setStatus] = useState(existing?.status || 'planifie');
@@ -21,27 +21,8 @@ export default function AppointmentForm({ existing, defaultClientId, defaultDate
   const [trajetMin, setTrajetMin] = useState(existing?.trajetMin ?? '');
   const [coutProduits, setCoutProduits] = useState(existing?.coutProduits ?? '');
   const [notes, setNotes] = useState(existing?.notes || '');
-  const [photos, setPhotos] = useState(existing?.photos || []);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
-
-  async function handlePhotoUpload(e) {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setMsg('Ajout des photos...');
-    const key = existing?.id || 'temp_' + Date.now();
-    const uploaded = [];
-    for (const f of files) {
-      try { uploaded.push(await uploadPhoto(`appointments/${key}`, f)); } catch (err) { /* skip */ }
-    }
-    setPhotos((p) => [...p, ...uploaded]);
-    setMsg('');
-  }
-  async function removePhoto(idx) {
-    const p = photos[idx];
-    if (p?.path) await deletePhoto(p.path);
-    setPhotos(photos.filter((_, i) => i !== idx));
-  }
 
   async function handleSave(e) {
     e.preventDefault();
@@ -52,7 +33,7 @@ export default function AppointmentForm({ existing, defaultClientId, defaultDate
     let lat = existing?.lat ?? null;
     let lng = existing?.lng ?? null;
     if (finalAdresse && finalAdresse !== existing?.adresse) {
-      setMsg('Localisation...');
+      setMsg(navigator.onLine ? 'Localisation...' : 'Hors ligne : localisation impossible pour le moment.');
       const coords = await geocode(finalAdresse);
       if (coords) { lat = coords.lat; lng = coords.lng; } else { lat = null; lng = null; }
     }
@@ -66,23 +47,17 @@ export default function AppointmentForm({ existing, defaultClientId, defaultDate
       dureeMin: dureeMin !== '' ? parseFloat(dureeMin) : null,
       trajetMin: trajetMin !== '' ? parseFloat(trajetMin) : null,
       coutProduits: coutProduits !== '' ? parseFloat(coutProduits) : null,
-      photos,
       lat, lng
     };
-    try {
-      if (existing) await updateItem('appointments', existing.id, data);
-      else await addItem('appointments', data);
-      onClose();
-    } catch (err) {
-      setMsg('Erreur lors de l’enregistrement.');
-    } finally {
-      setSaving(false);
-    }
+    if (existing) updateAppointment(existing.id, data);
+    else addAppointment(data);
+    setSaving(false);
+    onClose();
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!confirm('Supprimer ce rendez-vous ?')) return;
-    await deleteItem('appointments', existing.id);
+    deleteAppointment(existing.id);
     onClose();
   }
 
@@ -138,18 +113,12 @@ export default function AppointmentForm({ existing, defaultClientId, defaultDate
           <label>Notes</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Prestation, remarques..." />
         </div>
-        <div className="field">
-          <label>Photos</label>
-          <div className="photo-grid">
-            {photos.map((p, i) => (
-              <div className="photo-thumb" key={p.path || i}>
-                <img src={p.url} alt="" />
-                <button type="button" className="rm" onClick={() => removePhoto(i)}>×</button>
-              </div>
-            ))}
+        {existing && (
+          <div className="field">
+            <label>Photos / vidéos de la prestation</label>
+            <MediaGallery mediaKey={existing.id} />
           </div>
-          <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} style={{ marginTop: 8 }} />
-        </div>
+        )}
         {msg && <div className="status-msg">{msg}</div>}
         <div className="row" style={{ marginTop: 14 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} disabled={saving} type="submit">

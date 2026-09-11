@@ -16,7 +16,8 @@ export default defineConfig({
         background_color: '#0f0a1a',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: '.',
+        scope: '.',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -32,19 +33,12 @@ export default defineConfig({
               cacheName: 'osm-tiles',
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 }
             }
-          },
-          {
-            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'firebase-storage',
-              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 }
-            }
           }
         ]
       }
     })
   ],
+  base: process.env.VITE_BASE_PATH || '/',
   server: {
     host: true,
     port: 5173
@@ -53,7 +47,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
           leaflet: ['leaflet'],
           recharts: ['recharts']
         }

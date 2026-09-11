@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
-import { addItem, deleteItem, updateItem } from '../lib/firestore';
 import { fmtDate } from '../utils/format';
 
 export default function Notes() {
-  const { notes, ready } = useData();
+  const { notes, addNote, updateNote, deleteNote } = useData();
   const [text, setText] = useState('');
   const [date, setDate] = useState('');
-
-  if (!ready) return <div className="empty" style={{ paddingTop: 60 }}>Chargement…</div>;
 
   const sorted = [...notes].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
@@ -18,10 +15,10 @@ export default function Notes() {
     return da - db;
   });
 
-  async function handleAdd(e) {
+  function handleAdd(e) {
     e.preventDefault();
     if (!text.trim()) return;
-    await addItem('notes', { text: text.trim(), date: date || null, done: false });
+    addNote({ text: text.trim(), date: date || null });
     setText('');
     setDate('');
   }
@@ -51,10 +48,10 @@ export default function Notes() {
                 {n.date && <div className="item-sub" style={{ color: 'var(--primary)', fontWeight: 700 }}>📅 {fmtDate(n.date, { weekday: 'long', day: 'numeric', month: 'long' })}</div>}
                 <div style={{ whiteSpace: 'pre-wrap', textDecoration: n.done ? 'line-through' : 'none', marginTop: 4 }}>{n.text}</div>
                 <div className="row" style={{ marginTop: 8 }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => updateItem('notes', n.id, { done: !n.done })}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => updateNote(n.id, { done: !n.done })}>
                     {n.done ? '↺ Rouvrir' : '✓ Fait'}
                   </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => confirm('Supprimer cette note ?') && deleteItem('notes', n.id)}>Supprimer</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => confirm('Supprimer cette note ?') && deleteNote(n.id)}>Supprimer</button>
                 </div>
               </div>
             ))

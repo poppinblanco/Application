@@ -4,10 +4,9 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
 import { fmtEuro, fmtEuroH, sumPrix, tauxHoraire, capitalize } from '../utils/format';
-import { saveSettings } from '../lib/firestore';
 
 export default function Stats() {
-  const { clients, appointments, settings, ready } = useData();
+  const { clients, appointments, settings, ready, saveSettings } = useData();
   const [chargesInput, setChargesInput] = useState(settings.chargesPct ?? 21);
 
   const done = useMemo(() => appointments.filter((a) => a.status === 'termine'), [appointments]);
@@ -68,9 +67,9 @@ export default function Stats() {
           <div className="card-title">Revenu mensuel (12 derniers mois)</div>
           <div style={{ width: '100%', height: 200 }}>
             <ResponsiveContainer>
-              <BarChart data={monthly} margin={{ left: -20, right: 4, top: 4, bottom: 0 }}>
+              <BarChart data={monthly} margin={{ left: 0, right: 4, top: 4, bottom: 0 }}>
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={40} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={52} tickFormatter={(v) => v >= 1000 ? (v / 1000) + 'k' : v} />
                 <Tooltip formatter={(v) => fmtEuro(v)} contentStyle={{ borderRadius: 10, border: '1px solid var(--border)', fontSize: 12.5 }} />
                 <Bar dataKey="total" fill="#4f46e5" radius={[6, 6, 0, 0]} maxBarSize={22} />
               </BarChart>

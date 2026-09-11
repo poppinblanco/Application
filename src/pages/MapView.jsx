@@ -4,11 +4,10 @@ import 'leaflet/dist/leaflet.css';
 import { useData } from '../contexts/DataContext';
 import TopBar from '../components/TopBar';
 import { geocode, getCurrentPosition, itineraryUrl } from '../utils/geocode';
-import { updateItem } from '../lib/firestore';
 import { fmtDate } from '../utils/format';
 
 export default function MapView() {
-  const { clients, appointments, ready } = useData();
+  const { clients, appointments, ready, updateClient } = useData();
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markersLayer = useRef(null);
@@ -65,7 +64,7 @@ export default function MapView() {
     for (const c of missing) {
       setStatus(`Localisation ${++done}/${missing.length}...`);
       const coords = await geocode(c.adresse);
-      if (coords) await updateItem('clients', c.id, { lat: coords.lat, lng: coords.lng });
+      if (coords) updateClient(c.id, { lat: coords.lat, lng: coords.lng });
       await new Promise((r) => setTimeout(r, 350));
     }
     setStatus('Terminé.');

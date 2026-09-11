@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import TopBar from '../components/TopBar';
-import { addItem } from '../lib/firestore';
+import { useData } from '../contexts/DataContext';
+import { uid } from '../lib/storage';
 
 export default function Import() {
+  const { importData } = useData();
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState([]);
@@ -21,54 +23,62 @@ export default function Import() {
       const oldNotes = data.notes || [];
 
       const idMap = {};
-      setStatus(`Import de ${oldClients.length} clientes...`);
-      for (const c of oldClients) {
-        const ref = await addItem('clients', {
+      const newClients = oldClients.map((c) => {
+        const newId = uid();
+        idMap[c.id] = newId;
+        return {
+          id: newId,
           nom: c.nom || 'Sans nom',
           telephone: c.telephone || '',
           email: c.email || '',
           adresse: c.adresse || '',
           notes: c.notes || '',
           tags: [],
-          photos: [],
           lat: c.lat ?? null,
-          lng: c.lng ?? null
-        });
-        idMap[c.id] = ref.id;
-      }
-      setLog((l) => [...l, `${oldClients.length} clientes importées.`]);
+          lng: c.lng ?? null,
+          createdAt: new Date().toISOString()
+        };
+      });
 
-      setStatus(`Import de ${oldAppointments.length} rendez-vous...`);
       let skipped = 0;
-      for (const a of oldAppointments) {
-        const newClientId = idMap[a.clientId];
-        if (!newClientId) { skipped++; continue; }
-        await addItem('appointments', {
-          clientId: newClientId,
-          date: a.date,
-          status: a.status || 'termine',
-          adresse: a.adresse || '',
-          notes: a.notes || '',
-          prix: a.prix ?? null,
-          dureeMin: a.dureeMin ?? null,
-          trajetMin: a.trajetMin ?? null,
-          coutProduits: a.coutProduits ?? null,
-          photos: [],
-          lat: a.lat ?? null,
-          lng: a.lng ?? null
-        });
-      }
-      setLog((l) => [...l, `${oldAppointments.length - skipped} rendez-vous importés.${skipped ? ' ' + skipped + ' ignorés (cliente inconnue).' : ''}`]);
+      const newAppointments = oldAppointments
+        .map((a) => {
+          const newClientId = idMap[a.clientId];
+          if (!newClientId) { skipped++; return null; }
+          return {
+            id: uid(),
+            clientId: newClientId,
+            date: a.date,
+            status: a.status || 'termine',
+            adresse: a.adresse || '',
+            notes: a.notes || '',
+            prix: a.prix ?? null,
+            dureeMin: a.dureeMin ?? null,
+            trajetMin: a.trajetMin ?? null,
+            coutProduits: a.coutProduits ?? null,
+            lat: a.lat ?? null,
+            lng: a.lng ?? null,
+            createdAt: new Date().toISOString()
+          };
+        })
+        .filter(Boolean);
 
-      if (oldNotes.length) {
-        setStatus(`Import de ${oldNotes.length} notes...`);
-        for (const n of oldNotes) {
-          await addItem('notes', { text: n.text || '', date: n.date || null, done: false });
-        }
-        setLog((l) => [...l, `${oldNotes.length} notes importées.`]);
-      }
+      const newNotes = oldNotes.map((n) => ({
+        id: uid(),
+        text: n.text || '',
+        date: n.date || null,
+        done: false,
+        createdAt: new Date().toISOString()
+      }));
 
-      setStatus('Import terminé ✅');
+      importData({ clients: newClients, appointments: newAppointments, notes: newNotes });
+
+      setLog([
+        `${newClients.length} clientes importées.`,
+        `${newAppointments.length} rendez-vous importés.${skipped ? ' ' + skipped + ' ignorés (cliente inconnue).' : ''}`,
+        ...(newNotes.length ? [`${newNotes.length} notes importées.`] : [])
+      ]);
+      setStatus('Import terminé ✅ Les photos ne sont pas reprises : rajoutez-les depuis chaque fiche.');
     } catch (err) {
       setStatus("Le fichier n'a pas pu être lu. Vérifiez qu'il s'agit bien d'un export JSON valide.");
     } finally {
