@@ -25,7 +25,7 @@ export default function Settings() {
 
   return (
     <>
-      <TopBar title="Réglages" />
+      <TopBar title="Réglages" tag="Application" tagClass="m-settings-bg" />
       <main className="page">
         <div className="card">
           <div className="card-title">Mon entreprise</div>

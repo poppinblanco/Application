@@ -50,6 +50,8 @@ export default function ClientDetail() {
     <>
       <TopBar
         title={client.nom}
+        tag={client.statut === 'prospect' ? 'Prospect' : client.statut === 'inactive' ? 'Inactive' : 'Cliente active'}
+        tagClass={client.statut === 'prospect' ? 'm-pipeline-bg' : client.statut === 'inactive' ? 'm-settings-bg' : 'm-clients-bg'}
         sub={`${history.length} rendez-vous · ${fmtEuro(totalEarned)} encaissé`}
         right={<button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>Modifier</button>}
       />

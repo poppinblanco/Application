@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
+import { Home, Users, CalendarDays, MapPin, MoreHorizontal } from 'lucide-react';
 
 const ITEMS = [
-  { to: '/', icon: '🏠', label: 'Accueil', end: true },
-  { to: '/clients', icon: '👥', label: 'Clientes' },
-  { to: '/agenda', icon: '📅', label: 'Agenda' },
-  { to: '/carte', icon: '📍', label: 'Carte' },
-  { to: '/plus', icon: '⋯', label: 'Plus' }
+  { to: '/', icon: Home, label: 'Accueil', end: true },
+  { to: '/clients', icon: Users, label: 'Clientes' },
+  { to: '/agenda', icon: CalendarDays, label: 'Agenda' },
+  { to: '/carte', icon: MapPin, label: 'Carte' },
+  { to: '/plus', icon: MoreHorizontal, label: 'Plus' }
 ];
 
 export default function BottomNav() {
@@ -13,7 +14,7 @@ export default function BottomNav() {
     <nav className="bottom-nav">
       {ITEMS.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <span className="icon">{item.icon}</span>
+          <item.icon strokeWidth={2.3} />
           <span>{item.label}</span>
         </NavLink>
       ))}

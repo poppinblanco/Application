@@ -57,7 +57,7 @@ export default function Stats() {
 
   return (
     <>
-      <TopBar title="Statistiques" />
+      <TopBar title="Statistiques" tag="Suivi" tagClass="m-stats-bg" />
       <main className="page">
         <div style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 800, padding: '10px 14px', borderRadius: 10, fontSize: 13.5, marginBottom: 14 }}>
           💰 Total encaissé : {fmtEuro(grandTotal)}

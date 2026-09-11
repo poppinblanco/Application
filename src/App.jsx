@@ -11,6 +11,10 @@ import Notes from './pages/Notes';
 import Settings from './pages/Settings';
 import Plus from './pages/Plus';
 import Import from './pages/Import';
+import Pipeline from './pages/Pipeline';
+import Catalogue from './pages/Catalogue';
+import Stock from './pages/Stock';
+import Factures from './pages/Factures';
 
 export default function App() {
   return (
@@ -22,6 +26,10 @@ export default function App() {
         <Route path="/agenda" element={<Agenda />} />
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/carte" element={<MapView />} />
+        <Route path="/pipeline" element={<Pipeline />} />
+        <Route path="/catalogue" element={<Catalogue />} />
+        <Route path="/stock" element={<Stock />} />
+        <Route path="/factures" element={<Factures />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/notes" element={<Notes />} />
         <Route path="/reglages" element={<Settings />} />
