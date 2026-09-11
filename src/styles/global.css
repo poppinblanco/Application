@@ -32,6 +32,7 @@
   --m-carte: #4f46e5; --m-carte-soft: #eae8fc;
   --m-notes: #ca8a04; --m-notes-soft: #faf0d1;
   --m-settings: #475569; --m-settings-soft: #e7eaee;
+  --m-marketing: #be123c; --m-marketing-soft: #fce3e9;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,6 +63,7 @@
     --m-carte: #818cf8; --m-carte-soft: #262247;
     --m-notes: #facc15; --m-notes-soft: #362b0a;
     --m-settings: #94a3b8; --m-settings-soft: #262a31;
+    --m-marketing: #fb7185; --m-marketing-soft: #3a1520;
   }
 }
 
@@ -426,6 +428,7 @@ main.page { padding: 4px 16px 24px; }
 .m-carte-bg { background: var(--m-carte-soft); color: var(--m-carte); }
 .m-notes-bg { background: var(--m-notes-soft); color: var(--m-notes); }
 .m-settings-bg { background: var(--m-settings-soft); color: var(--m-settings); }
+.m-marketing-bg { background: var(--m-marketing-soft); color: var(--m-marketing); }
 
 .grad-clients { background: linear-gradient(135deg, var(--m-clients), #a78bfa); }
 .grad-agenda { background: linear-gradient(135deg, var(--m-agenda), #60a5fa); }
@@ -433,6 +436,7 @@ main.page { padding: 4px 16px 24px; }
 .grad-stats { background: linear-gradient(135deg, var(--m-stats), #22d3ee); }
 .grad-facturation { background: linear-gradient(135deg, var(--m-facturation), #34d399); }
 .grad-stock { background: linear-gradient(135deg, var(--m-stock), #fbbf24); }
+.grad-marketing { background: linear-gradient(135deg, var(--m-marketing), #fb7185); }
 
 /* ---- app drawer grid (Plus page) ---- */
 .drawer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
