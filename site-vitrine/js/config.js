@@ -20,22 +20,22 @@ const CONFIG = {
     photo: '', // TODO : mettez 'assets/photos/portrait.jpg' une fois votre photo ajoutée dans ce dossier
     specialties: ['Colorimétrie', 'Coupe femme & homme', 'Coiffure de mariage', 'Soins capillaires'], // TODO
 
-    address: '12 rue de l’Exemple, 13002 Marseille', // TODO : votre vraie adresse d'institut
-    phone: '06 00 00 00 00', // TODO
+    address: '12 rue de l’Exemple, 13002 Marseille', // TODO : votre vraie adresse d'institut (les prestations à domicile sont déjà mentionnées dans la bio et le tagline)
+    phone: '07 51 85 58 58',
     email: 'raissounamous@gmail.com',
-    whatsapp: '', // TODO : ex. "33600000000" (indicatif + numéro, sans le 0, sans espace). Laisser vide pour masquer le bouton WhatsApp.
+    whatsapp: '33751855858', // même numéro que "phone" ; mettez '' pour masquer le bouton WhatsApp si ce numéro n'a pas WhatsApp
     instagram: '', // TODO : lien complet, ex. https://instagram.com/raissa.coiffure
     facebook: '', // TODO
 
     // Horaires d'ouverture. Laissez ranges: [] pour un jour fermé.
     hours: [
-      { day: 'Lundi',    ranges: [] },
-      { day: 'Mardi',    ranges: [['09:30', '19:00']] },
-      { day: 'Mercredi', ranges: [['09:30', '19:00']] },
-      { day: 'Jeudi',    ranges: [['09:30', '19:00']] },
-      { day: 'Vendredi', ranges: [['09:30', '19:00']] },
-      { day: 'Samedi',   ranges: [['09:00', '17:00']] },
-      { day: 'Dimanche', ranges: [] }
+      { day: 'Lundi',    ranges: [['09:00', '23:00']] },
+      { day: 'Mardi',    ranges: [['09:00', '23:00']] },
+      { day: 'Mercredi', ranges: [['09:00', '23:00']] },
+      { day: 'Jeudi',    ranges: [['09:00', '23:00']] },
+      { day: 'Vendredi', ranges: [['09:00', '23:00']] },
+      { day: 'Samedi',   ranges: [['09:00', '23:00']] },
+      { day: 'Dimanche', ranges: [['09:00', '23:00']] }
     ]
   },
 
