@@ -150,7 +150,10 @@
       stepsEl.querySelectorAll('li').forEach((li) => {
         li.classList.toggle('active', Number(li.dataset.step) === step);
       });
-      if (step === 3) updateSummary();
+      if (step === 3) {
+        updateSummary();
+        if (typeof refreshWhatsapp === 'function') refreshWhatsapp();
+      }
     };
 
     $('rdv-step1-next').addEventListener('click', () => {
@@ -327,7 +330,7 @@
       Message: $('rdv-message').value || '—'
     });
 
-    const refreshWhatsapp = () => {
+    var refreshWhatsapp = function () {
       if (!biz.whatsapp) {
         rdvWhatsapp.hidden = true;
         return;
