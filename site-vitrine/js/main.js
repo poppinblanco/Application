@@ -15,6 +15,7 @@
     $('hero-name').textContent = biz.name;
     $('hero-tagline').textContent = biz.tagline;
     $('hero-address').textContent = `📍 ${biz.address}`;
+    $('hero-bio').textContent = biz.bio;
     $('hero-rating').textContent = '★★★★★';
     if (biz.photo) $('hero-photo').style.backgroundImage = `url('${biz.photo}')`;
   }

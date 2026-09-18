@@ -12,7 +12,7 @@
 const CONFIG = {
   business: {
     name: 'Raïssagasy Coiffure',
-    tagline: 'Coiffeuse à domicile & en institut',
+    tagline: 'Coiffeuse à domicile et en institut',
     bio: "Passionnée par la coiffure depuis plus de 10 ans, je vous accueille dans un cadre chaleureux "
        + "pour prendre soin de vos cheveux : coupes, colorations, soins et coiffures d'évènement. "
        + "Je me déplace aussi à domicile sur demande. Chaque prestation est personnalisée selon votre "
