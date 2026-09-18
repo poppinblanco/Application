@@ -11,17 +11,18 @@
 
 const CONFIG = {
   business: {
-    name: 'Raïssa Coiffure',
+    name: 'Raïssagasy Coiffure',
     tagline: 'Coiffeuse à domicile & en institut',
     bio: "Passionnée par la coiffure depuis plus de 10 ans, je vous accueille dans un cadre chaleureux "
        + "pour prendre soin de vos cheveux : coupes, colorations, soins et coiffures d'évènement. "
-       + "Chaque prestation est personnalisée selon votre nature de cheveux et vos envies.", // TODO
+       + "Je me déplace aussi à domicile sur demande. Chaque prestation est personnalisée selon votre "
+       + "nature de cheveux et vos envies.", // TODO : adaptez avec votre propre texte et votre zone de déplacement à domicile
     photo: '', // TODO : mettez 'assets/photos/portrait.jpg' une fois votre photo ajoutée dans ce dossier
     specialties: ['Colorimétrie', 'Coupe femme & homme', 'Coiffure de mariage', 'Soins capillaires'], // TODO
 
-    address: '12 rue de l’Exemple, 13002 Marseille', // TODO : votre vraie adresse
+    address: '12 rue de l’Exemple, 13002 Marseille', // TODO : votre vraie adresse d'institut
     phone: '06 00 00 00 00', // TODO
-    email: 'naftallia@gmail.com', // TODO si besoin
+    email: 'raissounamous@gmail.com',
     whatsapp: '', // TODO : ex. "33600000000" (indicatif + numéro, sans le 0, sans espace). Laisser vide pour masquer le bouton WhatsApp.
     instagram: '', // TODO : lien complet, ex. https://instagram.com/raissa.coiffure
     facebook: '', // TODO
