@@ -71,7 +71,7 @@ a { color: inherit; }
 
 /* HERO */
 .hero { padding: 2.25rem 0 1.75rem; background: linear-gradient(180deg, var(--color-surface-alt), var(--color-bg)); }
-.hero-inner { display: grid; grid-template-columns: 1.1fr .9fr; gap: 1.75rem; align-items: center; }
+.hero-inner { max-width: 640px; }
 .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; color: var(--color-primary); font-weight: 700; margin: 0 0 .35rem; }
 .hero h1 { font-size: clamp(1.9rem, 3.4vw, 2.7rem); }
 .hero-tagline { font-size: 1.05rem; color: var(--color-text); }
@@ -79,7 +79,7 @@ a { color: inherit; }
 .hero-bio { font-size: .95rem; max-width: 46ch; }
 .hero-rating { font-size: 1rem; color: var(--color-accent); margin-bottom: .6rem; }
 .hero-cta { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; }
-.hero-photo, .about-photo {
+.about-photo {
   width: 100%; aspect-ratio: 16/11; border-radius: var(--radius); box-shadow: var(--shadow);
   border: 1px solid var(--color-border);
   background: linear-gradient(135deg, #d4d2cf, #f0efed);
@@ -227,8 +227,8 @@ a { color: inherit; }
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
-  .hero-inner, .about-inner, .infos-inner { grid-template-columns: 1fr; }
-  .hero-photo, .about-photo { order: -1; max-width: 260px; margin: 0 auto; }
+  .about-inner, .infos-inner { grid-template-columns: 1fr; }
+  .about-photo { order: -1; max-width: 260px; margin: 0 auto; }
 }
 @media (max-width: 480px) {
   .brand { font-size: .95rem; }

@@ -18,7 +18,6 @@ const CONFIG = {
        + "Je me déplace aussi à domicile sur demande. Chaque prestation est personnalisée selon votre "
        + "nature de cheveux et vos envies.", // TODO : adaptez avec votre propre texte et votre zone de déplacement à domicile
     photo: '', // TODO : mettez 'assets/photos/portrait.jpg' une fois votre vraie photo ajoutée dans ce dossier
-    heroImage: 'assets/photos/realisation-2.jpg', // photo mise en avant sur la page d'accueil
     specialties: ['Colorimétrie', 'Coupe femme & homme', 'Coiffure de mariage', 'Soins capillaires'], // TODO
 
     address: 'Avenue de Saint-Antoine, 13015 Marseille', // TODO : ajoutez le numéro de rue si vous voulez une localisation plus précise sur la carte

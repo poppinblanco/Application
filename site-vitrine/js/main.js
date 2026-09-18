@@ -17,7 +17,6 @@
     $('hero-address').textContent = `📍 ${biz.address}`;
     $('hero-bio').textContent = biz.bio;
     $('hero-rating').textContent = '★★★★★';
-    if (biz.heroImage) $('hero-photo').style.backgroundImage = `url('${biz.heroImage}')`;
   }
 
   /* ---------- Gallery (home page) ---------- */
