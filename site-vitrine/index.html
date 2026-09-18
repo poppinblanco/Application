@@ -79,25 +79,33 @@
 
         <!-- STEP 1 -->
         <div class="booking-step" data-step-panel="1">
-          <label class="field-label" for="rdv-service">Prestation souhaitée</label>
-          <select id="rdv-service" class="input"></select>
+          <div id="rdv-selected-services" class="selected-services"></div>
+          <div class="add-service-row">
+            <select id="rdv-service-picker" class="input"></select>
+            <button type="button" class="btn btn-ghost btn-sm" id="rdv-add-service-btn">+ Ajouter une prestation</button>
+          </div>
           <div class="step-actions">
-            <button type="button" class="btn btn-primary" data-next="2">Continuer</button>
+            <button type="button" class="btn btn-primary" id="rdv-step1-next" disabled>Continuer</button>
           </div>
         </div>
 
         <!-- STEP 2 -->
         <div class="booking-step" data-step-panel="2" hidden>
-          <label class="field-label">Choisissez une date</label>
-          <div id="rdv-dates" class="chip-row"></div>
-
-          <label class="field-label" style="margin-top:1.25rem">Choisissez un horaire indicatif</label>
-          <div id="rdv-times" class="chip-row"></div>
+          <div class="calendar-toolbar">
+            <button type="button" class="icon-btn" id="rdv-cal-prev" aria-label="Jours précédents">‹</button>
+            <span class="calendar-range" id="rdv-cal-range"></span>
+            <button type="button" class="icon-btn" id="rdv-cal-next" aria-label="Jours suivants">›</button>
+            <label class="btn btn-ghost btn-sm date-jump-label">
+              Choisir une date
+              <input type="date" id="rdv-date-jump" class="date-jump-input" />
+            </label>
+          </div>
+          <div id="rdv-slots-calendar" class="slots-calendar"></div>
           <p class="hint">Ces créneaux sont indicatifs : nous vous recontactons pour confirmer la disponibilité exacte.</p>
 
           <div class="step-actions">
             <button type="button" class="btn btn-ghost" data-prev="1">Retour</button>
-            <button type="button" class="btn btn-primary" data-next="3">Continuer</button>
+            <button type="button" class="btn btn-primary" id="rdv-step2-next" disabled>Continuer</button>
           </div>
         </div>
 

@@ -40,7 +40,17 @@
   let currentStep = 1;
   let selectedDate = null;
   let selectedTime = null;
-  let rdvServiceSelect = null;
+  let selectedServices = [];
+  const VISIBLE_DAYS = 5;
+  let calendarOffset = 0;
+
+  const totalPrice = () => selectedServices.reduce((sum, s) => sum + s.price, 0);
+  const totalDuration = () => selectedServices.reduce((sum, s) => sum + s.duration, 0);
+
+  var addServiceToBooking = function (service) {
+    selectedServices.push(service);
+    renderSelectedServices();
+  };
 
   if ($('services-list')) {
     const servicesListEl = $('services-list');
@@ -63,10 +73,9 @@
           <button type="button" class="btn btn-primary">Réserver</button>
         `;
         row.querySelector('button').addEventListener('click', () => {
-          rdvServiceSelect.value = item.name;
-          goToStep(2);
+          addServiceToBooking({ ...item, category: cat.category });
+          goToStep(1);
           $('rendezvous').scrollIntoView({ behavior: 'smooth' });
-          renderDates();
         });
         block.appendChild(row);
       });
@@ -74,14 +83,49 @@
     });
   }
 
-  if ($('rdv-service')) {
-    rdvServiceSelect = $('rdv-service');
+  if ($('rdv-selected-services')) {
+    const picker = $('rdv-service-picker');
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.textContent = 'Choisir une prestation…';
+    picker.appendChild(placeholderOpt);
     flatServices.forEach((s) => {
       const opt = document.createElement('option');
       opt.value = s.name;
       opt.textContent = `${s.name} — ${euro(s.price)} (${s.duration} min)`;
-      rdvServiceSelect.appendChild(opt);
+      picker.appendChild(opt);
     });
+
+    $('rdv-add-service-btn').addEventListener('click', () => {
+      const name = picker.value;
+      if (!name) return;
+      const service = flatServices.find((s) => s.name === name);
+      if (service) addServiceToBooking(service);
+      picker.value = '';
+    });
+
+    var renderSelectedServices = function () {
+      const wrap = $('rdv-selected-services');
+      wrap.innerHTML = '';
+      selectedServices.forEach((s, i) => {
+        const card = document.createElement('div');
+        card.className = 'selected-service-card';
+        card.innerHTML = `
+          <div>
+            <span class="service-name">${s.name}</span>
+            <span class="service-meta">${s.duration} min · ${euro(s.price)}</span>
+          </div>
+          <button type="button" class="link-btn">Supprimer</button>
+        `;
+        card.querySelector('.link-btn').addEventListener('click', () => {
+          selectedServices.splice(i, 1);
+          renderSelectedServices();
+        });
+        wrap.appendChild(card);
+      });
+      $('rdv-step1-next').disabled = selectedServices.length === 0;
+    };
+    renderSelectedServices();
 
     const stepsEl = $('booking-steps');
     const panels = document.querySelectorAll('[data-step-panel]');
@@ -97,12 +141,12 @@
       if (step === 3) updateSummary();
     };
 
-    document.querySelectorAll('[data-next]').forEach((btn) =>
-      btn.addEventListener('click', () => {
-        if (Number(btn.dataset.next) === 2) renderDates();
-        goToStep(Number(btn.dataset.next));
-      })
-    );
+    $('rdv-step1-next').addEventListener('click', () => {
+      calendarOffset = 0;
+      renderCalendar();
+      goToStep(2);
+    });
+    $('rdv-step2-next').addEventListener('click', () => goToStep(3));
     document.querySelectorAll('[data-prev]').forEach((btn) =>
       btn.addEventListener('click', () => goToStep(Number(btn.dataset.prev)))
     );
@@ -115,83 +159,112 @@
       return entry ? entry.ranges : [];
     };
 
-    var renderDates = function () {
-      const datesEl = $('rdv-dates');
-      datesEl.innerHTML = '';
-      selectedDate = null;
-      selectedTime = null;
-      const today = new Date();
-
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
-        const ranges = hoursForDate(d);
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'chip';
-        chip.textContent = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-        if (ranges.length === 0) {
-          chip.disabled = true;
-        } else {
-          chip.addEventListener('click', () => {
-            datesEl.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
-            chip.classList.add('selected');
-            selectedDate = d;
-            renderTimes(ranges, i === 0);
-          });
-        }
-        datesEl.appendChild(chip);
-      }
-      $('rdv-times').innerHTML = '';
+    const startOfToday = () => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
     };
 
-    var renderTimes = function (ranges, isToday) {
-      const timesEl = $('rdv-times');
-      timesEl.innerHTML = '';
-      selectedTime = null;
+    const buildSlots = (ranges, isToday) => {
       const now = new Date();
       const slots = [];
-
       ranges.forEach(([start, end]) => {
         const [sh, sm] = start.split(':').map(Number);
         const [eh, em] = end.split(':').map(Number);
         let mins = sh * 60 + sm;
         const endMins = eh * 60 + em;
         while (mins + 30 <= endMins) {
-          slots.push(mins);
+          if (!isToday || mins > now.getHours() * 60 + now.getMinutes()) slots.push(mins);
           mins += 30;
         }
       });
-
-      slots.forEach((mins) => {
-        if (isToday && mins <= now.getHours() * 60 + now.getMinutes()) return;
+      return slots.map((mins) => {
         const h = String(Math.floor(mins / 60)).padStart(2, '0');
         const m = String(mins % 60).padStart(2, '0');
-        const label = `${h}:${m}`;
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'chip';
-        chip.textContent = label;
-        chip.addEventListener('click', () => {
-          timesEl.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
-          chip.classList.add('selected');
-          selectedTime = label;
-        });
-        timesEl.appendChild(chip);
+        return `${h}:${m}`;
       });
-
-      if (!slots.length) {
-        timesEl.innerHTML = '<p class="hint">Aucun créneau ce jour-là, choisissez une autre date.</p>';
-      }
     };
 
+    const sameDay = (a, b) => a.toDateString() === b.toDateString();
+
+    var renderCalendar = function () {
+      const container = $('rdv-slots-calendar');
+      container.innerHTML = '';
+      const today = startOfToday();
+      const cols = [];
+      for (let i = 0; i < VISIBLE_DAYS; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + calendarOffset + i);
+        cols.push(d);
+      }
+
+      cols.forEach((d, idx) => {
+        const col = document.createElement('div');
+        col.className = 'slot-day-col';
+        const header = document.createElement('div');
+        header.className = 'slot-day-header';
+        header.innerHTML = `<span>${d.toLocaleDateString('fr-FR', { weekday: 'short' })}</span><strong>${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</strong>`;
+        col.appendChild(header);
+
+        const ranges = hoursForDate(d);
+        const isToday = calendarOffset + idx === 0;
+        const slots = buildSlots(ranges, isToday);
+
+        if (!slots.length) {
+          const p = document.createElement('p');
+          p.className = 'slot-day-empty';
+          p.textContent = '—';
+          col.appendChild(p);
+        } else {
+          slots.forEach((label) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chip slot-btn';
+            btn.textContent = label;
+            if (selectedDate && sameDay(selectedDate, d) && selectedTime === label) btn.classList.add('selected');
+            btn.addEventListener('click', () => {
+              selectedDate = d;
+              selectedTime = label;
+              $('rdv-step2-next').disabled = false;
+              renderCalendar();
+            });
+            col.appendChild(btn);
+          });
+        }
+        container.appendChild(col);
+      });
+
+      $('rdv-cal-range').textContent =
+        `${cols[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${cols[cols.length - 1].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+      $('rdv-cal-prev').disabled = calendarOffset <= 0;
+    };
+
+    $('rdv-cal-prev').addEventListener('click', () => {
+      calendarOffset = Math.max(0, calendarOffset - VISIBLE_DAYS);
+      renderCalendar();
+    });
+    $('rdv-cal-next').addEventListener('click', () => {
+      calendarOffset += VISIBLE_DAYS;
+      renderCalendar();
+    });
+
+    const dateJump = $('rdv-date-jump');
+    dateJump.min = startOfToday().toISOString().slice(0, 10);
+    dateJump.addEventListener('change', (e) => {
+      if (!e.target.value) return;
+      const chosen = new Date(e.target.value + 'T00:00:00');
+      const diffDays = Math.round((chosen - startOfToday()) / 86400000);
+      calendarOffset = Math.max(0, diffDays);
+      renderCalendar();
+    });
+
     var updateSummary = function () {
-      const service = rdvServiceSelect.value;
+      const list = selectedServices.map((s) => s.name).join(', ');
       const dateLabel = selectedDate
         ? selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
         : 'à définir';
       $('rdv-summary').innerHTML =
-        `<strong>Récapitulatif :</strong> ${service} — ${dateLabel}${selectedTime ? ' à ' + selectedTime : ''}`;
+        `<strong>Récapitulatif :</strong> ${list} (${totalDuration()} min, ${euro(totalPrice())}) — ${dateLabel}${selectedTime ? ' à ' + selectedTime : ''}`;
     };
   }
 
@@ -231,7 +304,9 @@
     const rdvWhatsapp = $('rdv-whatsapp');
 
     const currentRdvFields = () => ({
-      Prestation: rdvServiceSelect.value,
+      Prestations: selectedServices.map((s) => `${s.name} (${euro(s.price)})`).join(', ') || 'non précisée',
+      'Durée totale': `${totalDuration()} min`,
+      'Total estimé': euro(totalPrice()),
       Date: selectedDate ? selectedDate.toLocaleDateString('fr-FR') : 'non précisée',
       Heure: selectedTime || 'non précisée',
       Nom: $('rdv-nom').value,
@@ -259,6 +334,11 @@
       e.preventDefault();
       submitLead(`Nouvelle demande de rendez-vous — ${biz.name}`, currentRdvFields()).then((mode) => {
         rdvForm.reset();
+        selectedServices = [];
+        selectedDate = null;
+        selectedTime = null;
+        renderSelectedServices();
+        goToStep(1);
         showSuccess($('rdv-success'), mode);
       });
     });
