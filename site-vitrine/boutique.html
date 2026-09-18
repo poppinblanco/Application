@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raïssagasy Coiffure — Boutique en ligne</title>
+<meta name="description" content="Boutique en ligne du salon Raïssagasy Coiffure : produits professionnels à retirer en institut." />
+<link rel="icon" href="assets/icons/logo-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap topbar">
+    <a class="brand" href="index.html">
+      <img src="assets/icons/logo-192.png" alt="" class="brand-logo" />
+      <span id="brand-name">Raïssagasy Coiffure</span>
+    </a>
+    <a class="btn btn-primary" href="index.html#rendezvous">Prendre RDV</a>
+  </div>
+  <nav class="tabbar">
+    <div class="wrap tabbar-inner">
+      <a href="index.html" class="tab">Prendre RDV</a>
+      <a href="offrir.html" class="tab">Offrir</a>
+      <a href="avis.html" class="tab">Avis</a>
+      <a href="apropos.html" class="tab">À propos</a>
+      <a href="boutique.html" class="tab active">Boutique en ligne</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="section">
+    <div class="wrap">
+      <h2>Boutique en ligne</h2>
+      <p class="section-lead">Produits professionnels, à retirer en institut. Règlement à la confirmation de commande.</p>
+      <div id="products-list" class="products-grid"></div>
+
+      <div class="cart-panel" id="cart-panel" hidden>
+        <h3>Votre commande</h3>
+        <ul id="cart-items" class="cart-items"></ul>
+        <p class="cart-total">Total : <strong id="cart-total">0 €</strong></p>
+        <button type="button" class="btn btn-primary" id="cart-checkout-btn">Valider ma commande</button>
+      </div>
+
+      <form id="cart-form" class="form-grid checkout-form" hidden>
+        <div>
+          <label class="field-label" for="cart-nom">Nom complet</label>
+          <input class="input" id="cart-nom" name="nom" required />
+        </div>
+        <div>
+          <label class="field-label" for="cart-tel">Téléphone</label>
+          <input class="input" id="cart-tel" name="telephone" type="tel" required />
+        </div>
+        <div class="full">
+          <label class="field-label" for="cart-email">E-mail</label>
+          <input class="input" id="cart-email" name="email" type="email" required />
+        </div>
+        <div class="full step-actions">
+          <button type="submit" class="btn btn-primary">Envoyer ma commande</button>
+        </div>
+      </form>
+      <div id="cart-success" class="form-success" hidden></div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>© <span id="footer-year"></span> <span id="footer-name">Raïssagasy Coiffure</span>. Tous droits réservés.</p>
+    <p class="footer-links"><a href="apropos.html">Infos pratiques &amp; contact</a></p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

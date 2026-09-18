@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raïssagasy Coiffure — Offrir une carte cadeau</title>
+<meta name="description" content="Offrez une carte cadeau du salon Raïssagasy Coiffure." />
+<link rel="icon" href="assets/icons/logo-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap topbar">
+    <a class="brand" href="index.html">
+      <img src="assets/icons/logo-192.png" alt="" class="brand-logo" />
+      <span id="brand-name">Raïssagasy Coiffure</span>
+    </a>
+    <a class="btn btn-primary" href="index.html#rendezvous">Prendre RDV</a>
+  </div>
+  <nav class="tabbar">
+    <div class="wrap tabbar-inner">
+      <a href="index.html" class="tab">Prendre RDV</a>
+      <a href="offrir.html" class="tab active">Offrir</a>
+      <a href="avis.html" class="tab">Avis</a>
+      <a href="apropos.html" class="tab">À propos</a>
+      <a href="boutique.html" class="tab">Boutique en ligne</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="section">
+    <div class="wrap">
+      <h2>Offrir une carte cadeau</h2>
+      <p class="section-lead">Le cadeau idéal pour vos proches. Paiement finalisé par téléphone ou en institut.</p>
+
+      <form id="gift-form" class="gift-card-form">
+        <label class="field-label">Montant</label>
+        <div class="chip-row" id="gift-amounts">
+          <button type="button" class="chip" data-amount="25">25 €</button>
+          <button type="button" class="chip" data-amount="50">50 €</button>
+          <button type="button" class="chip" data-amount="75">75 €</button>
+          <button type="button" class="chip" data-amount="100">100 €</button>
+        </div>
+        <label class="field-label" for="gift-custom" style="margin-top:.5rem">Ou montant libre (€)</label>
+        <input class="input" type="number" min="10" step="5" id="gift-custom" name="montant_libre" />
+
+        <div class="form-grid" style="margin-top:1.25rem">
+          <div>
+            <label class="field-label" for="gift-nom">Votre nom</label>
+            <input class="input" id="gift-nom" name="nom" required />
+          </div>
+          <div>
+            <label class="field-label" for="gift-tel">Votre téléphone</label>
+            <input class="input" id="gift-tel" name="telephone" type="tel" required />
+          </div>
+          <div class="full">
+            <label class="field-label" for="gift-email">Votre e-mail</label>
+            <input class="input" id="gift-email" name="email" type="email" required />
+          </div>
+          <div class="full">
+            <label class="field-label" for="gift-destinataire">Nom du/de la bénéficiaire</label>
+            <input class="input" id="gift-destinataire" name="destinataire" />
+          </div>
+          <div class="full">
+            <label class="field-label" for="gift-message">Message personnalisé</label>
+            <textarea class="input" id="gift-message" name="message" rows="3"></textarea>
+          </div>
+          <div class="full step-actions">
+            <button type="submit" class="btn btn-primary">Commander la carte cadeau</button>
+          </div>
+        </div>
+      </form>
+      <div id="gift-success" class="form-success" hidden></div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>© <span id="footer-year"></span> <span id="footer-name">Raïssagasy Coiffure</span>. Tous droits réservés.</p>
+    <p class="footer-links"><a href="apropos.html">Infos pratiques &amp; contact</a></p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
