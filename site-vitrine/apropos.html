@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Raïssagasy Coiffure — À propos</title>
 <meta name="description" content="À propos du salon Raïssagasy Coiffure : présentation, adresse, horaires et contact." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Raïssagasy Coiffure — À propos" />
+<meta property="og:description" content="À propos du salon Raïssagasy Coiffure : présentation, adresse, horaires et contact." />
+<meta property="og:image" content="assets/icons/logo.png" />
+<meta property="og:url" content="https://votre-domaine.fr/apropos.html" />
+<meta name="twitter:card" content="summary" />
 <link rel="icon" href="assets/icons/logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -58,8 +64,11 @@
         <h3>Horaires</h3>
         <table class="hours-table" id="hours-table"></table>
       </div>
-      <div class="map-wrap">
-        <iframe id="map-frame" title="Localisation du salon" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <div class="map-wrap" id="map-wrap">
+        <button type="button" class="map-consent-btn" id="map-consent-btn">
+          📍 Afficher la carte
+          <span>Charge Google Maps (dépose des cookies tiers)</span>
+        </button>
       </div>
     </div>
   </section>
@@ -68,7 +77,7 @@
 <footer class="site-footer">
   <div class="wrap footer-inner">
     <p>© <span id="footer-year"></span> <span id="footer-name">Raïssagasy Coiffure</span>. Tous droits réservés.</p>
-    <p class="footer-links"><a href="index.html#rendezvous">Prendre rendez-vous</a></p>
+    <p class="footer-links"><a href="index.html#rendezvous">Prendre rendez-vous</a> · <a href="mentions-legales.html">Mentions légales</a></p>
   </div>
 </footer>
 

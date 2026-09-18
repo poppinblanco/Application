@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TODO : remplacez "https://votre-domaine.fr" par votre vraie adresse une fois votre nom de domaine configuré -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://votre-domaine.fr/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://votre-domaine.fr/offrir.html</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://votre-domaine.fr/avis.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://votre-domaine.fr/apropos.html</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://votre-domaine.fr/boutique.html</loc>
+    <priority>0.6</priority>
+  </url>
+</urlset>

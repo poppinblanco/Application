@@ -540,6 +540,14 @@
       hoursTable.appendChild(tr);
     });
 
-    $('map-frame').src = `https://www.google.com/maps?q=${encodeURIComponent(biz.address)}&output=embed`;
+    $('map-consent-btn').addEventListener('click', () => {
+      const iframe = document.createElement('iframe');
+      iframe.title = 'Localisation du salon';
+      iframe.loading = 'lazy';
+      iframe.referrerPolicy = 'no-referrer-when-downgrade';
+      iframe.src = `https://www.google.com/maps?q=${encodeURIComponent(biz.address)}&output=embed`;
+      $('map-wrap').innerHTML = '';
+      $('map-wrap').appendChild(iframe);
+    });
   }
 })();

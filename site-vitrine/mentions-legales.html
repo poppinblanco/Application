@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raïssagasy Coiffure — Mentions légales &amp; confidentialité</title>
+<meta name="description" content="Mentions légales et politique de confidentialité du site Raïssagasy Coiffure." />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="assets/icons/logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap topbar">
+    <a class="brand" href="index.html">
+      <img src="assets/icons/logo.png" alt="" class="brand-logo" />
+      <span id="brand-name">Raïssagasy Coiffure</span>
+    </a>
+    <a class="btn btn-primary" href="index.html#rendezvous">Prendre RDV</a>
+  </div>
+  <nav class="tabbar">
+    <div class="wrap tabbar-inner">
+      <a href="index.html" class="tab">Prendre RDV</a>
+      <a href="offrir.html" class="tab">Offrir</a>
+      <a href="avis.html" class="tab">Avis</a>
+      <a href="apropos.html" class="tab">À propos</a>
+      <a href="boutique.html" class="tab">Boutique en ligne</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="section">
+    <div class="wrap" style="max-width: 760px;">
+      <h2>Mentions légales</h2>
+      <p><strong>Éditeur du site :</strong> <span id="legal-name"></span></p>
+      <p><strong>Contact :</strong> <span id="legal-email"></span> — <span id="legal-phone"></span></p>
+      <p><strong>Directeur de la publication :</strong> <span id="legal-name-2"></span></p>
+      <p>
+        <strong>Hébergement du site :</strong> Netlify, Inc. — 44 Montgomery Street, Suite 300,
+        San Francisco, California 94104, États-Unis —
+        <a href="https://www.netlify.com" target="_blank" rel="noopener">netlify.com</a>
+      </p>
+
+      <h2 style="margin-top: 2.5rem;">Politique de confidentialité (RGPD)</h2>
+      <p>
+        Les formulaires de ce site (prise de rendez-vous, commande boutique, carte cadeau) collectent
+        votre nom, téléphone, e-mail et le message que vous saisissez. Ces informations sont utilisées
+        <strong>uniquement</strong> pour traiter votre demande (vous recontacter, confirmer un
+        rendez-vous ou une commande) et ne sont ni revendues, ni partagées avec des tiers à des fins
+        commerciales.
+      </p>
+      <p>
+        Ces données sont conservées le temps nécessaire au traitement de votre demande. Vous pouvez à
+        tout moment demander l'accès, la rectification ou la suppression de vos données en nous
+        contactant par téléphone ou e-mail (coordonnées ci-dessus).
+      </p>
+      <p>
+        <strong>Cookies :</strong> ce site n'utilise pas de cookie de suivi ou publicitaire. La carte
+        de localisation (Google Maps) ne se charge qu'après un clic volontaire de votre part sur la
+        page « À propos » ; Google peut alors déposer ses propres cookies, indépendamment de ce site.
+      </p>
+      <p>
+        <strong>Polices de caractères :</strong> ce site charge la police « Inter » depuis les serveurs
+        de Google Fonts, ce qui transmet votre adresse IP à Google au chargement de la page.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>© <span id="footer-year"></span> <span id="footer-name">Raïssagasy Coiffure</span>. Tous droits réservés.</p>
+    <p class="footer-links"><a href="index.html">Retour à l'accueil</a></p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script>
+  const b = CONFIG.business;
+  document.getElementById('brand-name').textContent = b.name;
+  document.getElementById('footer-name').textContent = b.name;
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+  document.getElementById('legal-name').textContent = b.name;
+  document.getElementById('legal-name-2').textContent = b.name;
+  document.getElementById('legal-email').textContent = b.email;
+  document.getElementById('legal-phone').textContent = b.phone;
+</script>
+</body>
+</html>
