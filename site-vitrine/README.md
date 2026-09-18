@@ -80,3 +80,17 @@ préférable pour ce site public.
 - [ ] Créer un compte Formspree si vous voulez éviter le mailto (étape 2)
 - [ ] Vérifier les mentions légales (nom, SIRET si auto-entrepreneur, adresse)
       à ajouter en pied de page si nécessaire
+
+## 6. Déploiement Netlify connecté à ce dépôt
+
+Le site est relié à Netlify (déploiement continu) avec la configuration suivante,
+à vérifier dans **Project configuration → Developer settings** :
+
+- **Repository** : `poppinblanco/Application`
+- **Build settings → Base directory** : `site-vitrine`
+- **Production branch** (dans Branches and deploy contexts) : la branche de
+  travail actuelle, ex. `claude/coiffure-booking-shop-site-pqzxfc`, ou `main`
+  une fois cette branche fusionnée.
+
+Chaque nouveau commit poussé sur cette branche redéploie automatiquement le
+site sur Netlify.
