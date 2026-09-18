@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raïssa Coiffure — Prise de rendez-vous en ligne</title>
+<meta name="description" content="Salon de coiffure Raïssa Coiffure : prestations, tarifs, prise de rendez-vous, cartes cadeaux et boutique en ligne." />
+<link rel="icon" href="assets/icons/logo-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header" id="top">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top">
+      <img src="assets/icons/logo-192.png" alt="" class="brand-logo" />
+      <span id="brand-name">Raïssa Coiffure</span>
+    </a>
+
+    <nav class="main-nav" id="main-nav">
+      <a href="#apropos">À propos</a>
+      <a href="#prestations">Prestations</a>
+      <a href="#boutique">Boutique</a>
+      <a href="#offrir">Offrir</a>
+      <a href="#avis">Avis</a>
+      <a href="#infos">Infos pratiques</a>
+    </nav>
+
+    <div class="header-actions">
+      <a class="phone-link" id="header-phone" href="tel:">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span id="header-phone-text">Téléphone</span>
+      </a>
+      <a class="btn btn-primary" href="#rendezvous">Prendre rendez-vous</a>
+    </div>
+
+    <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div class="hero-text">
+        <p class="eyebrow">Salon de coiffure indépendant</p>
+        <h1 id="hero-name">Raïssa Coiffure</h1>
+        <p class="hero-tagline" id="hero-tagline">Coiffeuse à domicile &amp; en institut</p>
+        <p class="hero-address" id="hero-address">📍 12 rue de l'Exemple, 13002 Marseille</p>
+        <div class="hero-rating" id="hero-rating" aria-hidden="true"></div>
+        <div class="hero-cta">
+          <a href="#rendezvous" class="btn btn-primary btn-lg">Prendre rendez-vous</a>
+          <a href="#prestations" class="btn btn-ghost btn-lg">Voir les tarifs</a>
+        </div>
+      </div>
+      <div class="hero-photo" id="hero-photo" role="img" aria-label="Photo du salon"></div>
+    </div>
+  </section>
+
+  <!-- A PROPOS -->
+  <section id="apropos" class="section">
+    <div class="wrap about-inner">
+      <div class="about-photo" id="about-photo" role="img" aria-label="Portrait de la coiffeuse"></div>
+      <div class="about-text">
+        <h2>À propos</h2>
+        <p id="about-bio"></p>
+        <ul class="tags" id="about-specialties"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRESTATIONS -->
+  <section id="prestations" class="section section-alt">
+    <div class="wrap">
+      <h2>Prestations &amp; tarifs</h2>
+      <p class="section-lead">Sélectionnez une prestation pour démarrer votre demande de rendez-vous.</p>
+      <div id="services-list" class="services-list"></div>
+    </div>
+  </section>
+
+  <!-- RENDEZ-VOUS -->
+  <section id="rendezvous" class="section">
+    <div class="wrap">
+      <h2>Prendre rendez-vous</h2>
+      <p class="section-lead">
+        Choisissez une prestation, une date et un horaire souhaités. Votre demande nous sera transmise et
+        <strong>confirmée par téléphone ou SMS sous 24h</strong> — il n'y a pas de paiement en ligne.
+      </p>
+
+      <div class="booking-card">
+        <ol class="booking-steps" id="booking-steps">
+          <li class="active" data-step="1">1. Prestation</li>
+          <li data-step="2">2. Date &amp; heure</li>
+          <li data-step="3">3. Vos coordonnées</li>
+        </ol>
+
+        <!-- STEP 1 -->
+        <div class="booking-step" data-step-panel="1">
+          <label class="field-label" for="rdv-service">Prestation souhaitée</label>
+          <select id="rdv-service" class="input"></select>
+          <div class="step-actions">
+            <button type="button" class="btn btn-primary" data-next="2">Continuer</button>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="booking-step" data-step-panel="2" hidden>
+          <label class="field-label">Choisissez une date</label>
+          <div id="rdv-dates" class="chip-row"></div>
+
+          <label class="field-label" style="margin-top:1.25rem">Choisissez un horaire indicatif</label>
+          <div id="rdv-times" class="chip-row"></div>
+          <p class="hint">Ces créneaux sont indicatifs : nous vous recontactons pour confirmer la disponibilité exacte.</p>
+
+          <div class="step-actions">
+            <button type="button" class="btn btn-ghost" data-prev="1">Retour</button>
+            <button type="button" class="btn btn-primary" data-next="3">Continuer</button>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="booking-step" data-step-panel="3" hidden>
+          <form id="rdv-form" class="form-grid">
+            <div>
+              <label class="field-label" for="rdv-nom">Nom complet</label>
+              <input class="input" id="rdv-nom" name="nom" required />
+            </div>
+            <div>
+              <label class="field-label" for="rdv-tel">Téléphone</label>
+              <input class="input" id="rdv-tel" name="telephone" type="tel" required />
+            </div>
+            <div class="full">
+              <label class="field-label" for="rdv-email">E-mail</label>
+              <input class="input" id="rdv-email" name="email" type="email" required />
+            </div>
+            <div class="full">
+              <label class="field-label" for="rdv-message">Message (optionnel)</label>
+              <textarea class="input" id="rdv-message" name="message" rows="3"></textarea>
+            </div>
+            <div class="full booking-summary" id="rdv-summary"></div>
+            <div class="full step-actions">
+              <button type="button" class="btn btn-ghost" data-prev="2">Retour</button>
+              <button type="submit" class="btn btn-primary">Envoyer ma demande</button>
+            </div>
+          </form>
+          <a id="rdv-whatsapp" class="btn btn-whatsapp" href="#" target="_blank" rel="noopener" hidden>
+            Réserver plus vite via WhatsApp
+          </a>
+        </div>
+
+        <div id="rdv-success" class="form-success" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOUTIQUE -->
+  <section id="boutique" class="section section-alt">
+    <div class="wrap">
+      <h2>Boutique</h2>
+      <p class="section-lead">Produits professionnels, à retirer en institut. Règlement à la confirmation de commande.</p>
+      <div id="products-list" class="products-grid"></div>
+
+      <div class="cart-panel" id="cart-panel" hidden>
+        <h3>Votre commande</h3>
+        <ul id="cart-items" class="cart-items"></ul>
+        <p class="cart-total">Total : <strong id="cart-total">0 €</strong></p>
+        <button type="button" class="btn btn-primary" id="cart-checkout-btn">Valider ma commande</button>
+      </div>
+
+      <form id="cart-form" class="form-grid checkout-form" hidden>
+        <div>
+          <label class="field-label" for="cart-nom">Nom complet</label>
+          <input class="input" id="cart-nom" name="nom" required />
+        </div>
+        <div>
+          <label class="field-label" for="cart-tel">Téléphone</label>
+          <input class="input" id="cart-tel" name="telephone" type="tel" required />
+        </div>
+        <div class="full">
+          <label class="field-label" for="cart-email">E-mail</label>
+          <input class="input" id="cart-email" name="email" type="email" required />
+        </div>
+        <div class="full step-actions">
+          <button type="submit" class="btn btn-primary">Envoyer ma commande</button>
+        </div>
+      </form>
+      <div id="cart-success" class="form-success" hidden></div>
+    </div>
+  </section>
+
+  <!-- OFFRIR / CARTE CADEAU -->
+  <section id="offrir" class="section">
+    <div class="wrap">
+      <h2>Offrir une carte cadeau</h2>
+      <p class="section-lead">Le cadeau idéal pour vos proches. Paiement finalisé par téléphone ou en institut.</p>
+
+      <form id="gift-form" class="gift-card-form">
+        <label class="field-label">Montant</label>
+        <div class="chip-row" id="gift-amounts">
+          <button type="button" class="chip" data-amount="25">25 €</button>
+          <button type="button" class="chip" data-amount="50">50 €</button>
+          <button type="button" class="chip" data-amount="75">75 €</button>
+          <button type="button" class="chip" data-amount="100">100 €</button>
+        </div>
+        <label class="field-label" for="gift-custom" style="margin-top:.5rem">Ou montant libre (€)</label>
+        <input class="input" type="number" min="10" step="5" id="gift-custom" name="montant_libre" />
+
+        <div class="form-grid" style="margin-top:1.25rem">
+          <div>
+            <label class="field-label" for="gift-nom">Votre nom</label>
+            <input class="input" id="gift-nom" name="nom" required />
+          </div>
+          <div>
+            <label class="field-label" for="gift-tel">Votre téléphone</label>
+            <input class="input" id="gift-tel" name="telephone" type="tel" required />
+          </div>
+          <div class="full">
+            <label class="field-label" for="gift-email">Votre e-mail</label>
+            <input class="input" id="gift-email" name="email" type="email" required />
+          </div>
+          <div class="full">
+            <label class="field-label" for="gift-destinataire">Nom du/de la bénéficiaire</label>
+            <input class="input" id="gift-destinataire" name="destinataire" />
+          </div>
+          <div class="full">
+            <label class="field-label" for="gift-message">Message personnalisé</label>
+            <textarea class="input" id="gift-message" name="message" rows="3"></textarea>
+          </div>
+          <div class="full step-actions">
+            <button type="submit" class="btn btn-primary">Commander la carte cadeau</button>
+          </div>
+        </div>
+      </form>
+      <div id="gift-success" class="form-success" hidden></div>
+    </div>
+  </section>
+
+  <!-- AVIS -->
+  <section id="avis" class="section section-alt">
+    <div class="wrap">
+      <h2>Avis clients</h2>
+      <div id="testimonials-list" class="testimonials-grid"></div>
+    </div>
+  </section>
+
+  <!-- INFOS PRATIQUES -->
+  <section id="infos" class="section">
+    <div class="wrap infos-inner">
+      <div>
+        <h2>Infos pratiques</h2>
+        <p><strong>Adresse :</strong> <span id="infos-address"></span></p>
+        <p><strong>Téléphone :</strong> <span id="infos-phone"></span></p>
+        <p><strong>E-mail :</strong> <span id="infos-email"></span></p>
+        <div id="infos-socials" class="socials"></div>
+
+        <h3>Horaires</h3>
+        <table class="hours-table" id="hours-table"></table>
+      </div>
+      <div class="map-wrap">
+        <iframe id="map-frame" title="Localisation du salon" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>© <span id="footer-year"></span> <span id="footer-name">Raïssa Coiffure</span>. Tous droits réservés.</p>
+    <p class="footer-links"><a href="#top">Retour en haut</a></p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
