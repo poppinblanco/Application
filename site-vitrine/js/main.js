@@ -17,7 +17,19 @@
     $('hero-address').textContent = `📍 ${biz.address}`;
     $('hero-bio').textContent = biz.bio;
     $('hero-rating').textContent = '★★★★★';
-    if (biz.photo) $('hero-photo').style.backgroundImage = `url('${biz.photo}')`;
+    if (biz.heroImage) $('hero-photo').style.backgroundImage = `url('${biz.heroImage}')`;
+  }
+
+  /* ---------- Gallery (home page) ---------- */
+  if ($('gallery-grid')) {
+    const galleryEl = $('gallery-grid');
+    (CONFIG.gallery || []).forEach((src, i) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = `Réalisation ${i + 1}`;
+      img.loading = 'lazy';
+      galleryEl.appendChild(img);
+    });
   }
 
   /* ---------- About (apropos page) ---------- */

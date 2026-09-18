@@ -17,7 +17,8 @@ const CONFIG = {
        + "pour prendre soin de vos cheveux : coupes, colorations, soins et coiffures d'évènement. "
        + "Je me déplace aussi à domicile sur demande. Chaque prestation est personnalisée selon votre "
        + "nature de cheveux et vos envies.", // TODO : adaptez avec votre propre texte et votre zone de déplacement à domicile
-    photo: '', // TODO : mettez 'assets/photos/portrait.jpg' une fois votre photo ajoutée dans ce dossier
+    photo: '', // TODO : mettez 'assets/photos/portrait.jpg' une fois votre vraie photo ajoutée dans ce dossier
+    heroImage: 'assets/photos/realisation-2.jpg', // photo mise en avant sur la page d'accueil
     specialties: ['Colorimétrie', 'Coupe femme & homme', 'Coiffure de mariage', 'Soins capillaires'], // TODO
 
     address: 'Avenue de Saint-Antoine, 13015 Marseille', // TODO : ajoutez le numéro de rue si vous voulez une localisation plus précise sur la carte
@@ -45,6 +46,13 @@ const CONFIG = {
   // https://formspree.io, créez un formulaire, et collez son URL ici,
   // ex: 'https://formspree.io/f/abcdwxyz'
   formspreeEndpoint: '',
+
+  // Photos de réalisations affichées sur la page d'accueil.
+  gallery: [
+    'assets/photos/realisation-1.jpg',
+    'assets/photos/realisation-2.jpg',
+    'assets/photos/realisation-3.jpg'
+  ], // TODO : remplacez par vos vraies photos de réalisations au fur et à mesure
 
   // Prestations & tarifs, regroupées par catégorie.
   services: [
