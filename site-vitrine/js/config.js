@@ -20,7 +20,7 @@ const CONFIG = {
     photo: '', // TODO : mettez 'assets/photos/portrait.jpg' une fois votre photo ajoutée dans ce dossier
     specialties: ['Colorimétrie', 'Coupe femme & homme', 'Coiffure de mariage', 'Soins capillaires'], // TODO
 
-    address: '12 rue de l’Exemple, 13002 Marseille', // TODO : votre vraie adresse d'institut (les prestations à domicile sont déjà mentionnées dans la bio et le tagline)
+    address: 'Avenue de Saint-Antoine, 13015 Marseille', // TODO : ajoutez le numéro de rue si vous voulez une localisation plus précise sur la carte
     phone: '07 51 85 58 58',
     email: 'raissounamous@gmail.com',
     whatsapp: '33751855858', // même numéro que "phone" ; mettez '' pour masquer le bouton WhatsApp si ce numéro n'a pas WhatsApp
