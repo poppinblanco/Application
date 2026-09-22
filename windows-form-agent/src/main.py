@@ -120,7 +120,10 @@ def apply_document(
     `confirm_event`/`confirm_decision`/`on_ready_for_review` (formulaire web
     uniquement) ajoutent une pause de verification visuelle entre le
     remplissage et la validation finale -- voir
-    automation/browser.py:fill_and_submit_form.
+    automation/browser.py:fill_and_submit_form. Si l'utilisateur annule
+    l'envoi a ce moment-la (outcome "annule"), le document n'est pas compte
+    dans le quota et pourra etre retente (avec des valeurs corrigees) sans
+    relancer tout le mode pas-a-pas.
     """
     if not analysis.can_apply:
         raise ValueError("Ce document n'a pas ete valide, impossible de le remplir.")
@@ -130,7 +133,7 @@ def apply_document(
         return "interrompu"
 
     try:
-        interrupted = _apply_to_target(
+        interruption = _apply_to_target(
             config,
             analysis.job,
             analysis.source_path,
@@ -146,8 +149,10 @@ def apply_document(
         )
         return "erreur"
 
-    if interrupted:
+    if interruption == "stopped":
         return "interrompu"
+    if interruption == "cancelled":
+        return "annule"
 
     if analysis.corrected:
         add_example(analysis.job.name, analysis.document_text, analysis.values)
@@ -229,7 +234,7 @@ def process_job(
         # Important : marquer l'etat AVANT de deplacer le fichier, car
         # mark_processed a besoin de lire sa date/taille a son emplacement
         # d'origine (une fois deplace, le fichier n'y est plus).
-        if state is not None and not dry_run and outcome != "interrompu":
+        if state is not None and not dry_run and outcome not in ("interrompu", "annule"):
             mark_processed(state, source_path, outcome)
 
         if not dry_run:
@@ -265,9 +270,12 @@ def _apply_to_target(
     confirm_event=None,
     confirm_decision: list | None = None,
     on_ready_for_review=None,
-) -> bool:
-    """Renvoie True si l'action a ete interrompue (arret d'urgence ou envoi
-    annule apres verification)."""
+) -> str:
+    """Renvoie "none" si tout s'est deroule normalement, "stopped" en cas
+    d'arret d'urgence (page laissee ouverte pour intervention manuelle), ou
+    "cancelled" si l'utilisateur a annule l'envoi apres avoir regarde la page
+    remplie (page refermee normalement, a corriger/retenter depuis le
+    programme)."""
     output_dir = Path(config.output_folder)
     target = job.target
 
@@ -315,8 +323,10 @@ def _apply_to_target(
                 confirm_decision=confirm_decision,
                 on_ready_for_review=on_ready_for_review,
             )
+        if result.cancelled:
+            return "cancelled"
         if result.interrupted:
-            return True
+            return "stopped"
         if result.success:
             logger.info("[%s] Formulaire web soumis avec succes pour %s", job.name, source_path.name)
         else:
@@ -332,7 +342,7 @@ def _apply_to_target(
             filler.connect(target.window_title)
         result = filler.fill_form(target.window_title, target.control_map, values, stop_event=stop_event)
         if result.interrupted:
-            return True
+            return "stopped"
         if result.success:
             logger.info("[%s] Formulaire desktop rempli pour %s", job.name, source_path.name)
         else:
@@ -342,7 +352,7 @@ def _apply_to_target(
     else:
         logger.error("[%s] Type de cible inconnu : %s", job.name, target.type)
 
-    return False
+    return "none"
 
 
 def run_watch_forever(

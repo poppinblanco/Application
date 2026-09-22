@@ -551,10 +551,18 @@ class AgentGUI:
                     self._finish_step_mode()
                 elif kind == "interrupted":
                     self._append_log(
-                        f"Traitement de {payload} interrompu (arret d'urgence ou envoi annule apres "
-                        "verification). La page/fenetre a ete laissee ouverte, verifie-la avant de continuer."
+                        f"Arret d'urgence : traitement de {payload} interrompu en cours de route. "
+                        "La page/fenetre a ete laissee ouverte, verifie-la avant de continuer."
                     )
                     self._finish_step_mode()
+                elif kind == "cancelled_review":
+                    self._append_log(
+                        f"Envoi annule pour {payload} apres verification de la page -- corrige la valeur "
+                        "en cause si besoin, puis clique de nouveau sur 'Remplir ce document'."
+                    )
+                    self._reset_confirm_buttons("")
+                    if self.step_current is not None:
+                        self._show_step_analysis(self.step_current)
                 elif kind == "await_confirmation":
                     self.step_confirm_status_var.set(
                         "Champs remplis sur la page reelle -- verifie-la, puis confirme ou annule l'envoi ci-dessous."
@@ -716,6 +724,12 @@ class AgentGUI:
             )
             if outcome == "interrompu":
                 self.step_queue.put(("interrupted", self.step_current.source_path.name))
+                return
+            if outcome == "annule":
+                # Contrairement a l'arret d'urgence, on reste sur ce meme
+                # document : l'utilisateur peut corriger une valeur dans le
+                # tableau puis cliquer de nouveau sur "Remplir ce document".
+                self.step_queue.put(("cancelled_review", self.step_current.source_path.name))
                 return
             archive_source_if_needed(self.config, self.step_job, self.step_current.source_path, outcome)
             self.step_pos += 1

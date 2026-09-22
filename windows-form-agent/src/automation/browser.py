@@ -32,7 +32,14 @@ class WebFormResult:
     filled_fields: list[str]
     missing_selectors: list[str]
     message: str
+    # Arret d'urgence : action stoppee en plein milieu, page laissee ouverte
+    # pour une intervention manuelle immediate.
     interrupted: bool = False
+    # Envoi annule par l'utilisateur apres avoir regarde la page remplie :
+    # la page est refermee normalement (l'utilisateur va corriger puis
+    # relancer un remplissage frais depuis le programme, pas continuer a la
+    # main dans cette fenetre-la).
+    cancelled: bool = False
 
 
 class BrowserSession:
@@ -174,14 +181,18 @@ class BrowserSession:
                 confirm_event.wait()
                 decision = confirm_decision[0] if confirm_decision else "confirm"
                 if decision != "confirm":
-                    interrupted = True
-                    logger.info("Envoi annule par l'utilisateur apres verification. Page laissee ouverte.")
+                    # Contrairement a l'arret d'urgence, on referme la page
+                    # normalement ici : l'utilisateur va corriger la valeur
+                    # dans le tableau puis relancer un remplissage frais
+                    # depuis le programme, pas continuer a la main dans
+                    # cette fenetre precise.
+                    logger.info("Envoi annule par l'utilisateur apres verification. Fermeture de la page.")
                     return WebFormResult(
                         success=False,
                         filled_fields=filled,
                         missing_selectors=[],
                         message="Envoi annule par l'utilisateur apres verification.",
-                        interrupted=True,
+                        cancelled=True,
                     )
 
             if stop_event is not None and stop_event.is_set():

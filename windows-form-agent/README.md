@@ -160,10 +160,13 @@ boutons apparaissent alors dans l'interface :
 
 - **"Confirmer l'envoi"** : regarde la page reelle une derniere fois, et si
   tout est bon, valide -- le formulaire est alors soumis et la page se
-  ferme.
+  ferme, puis le document suivant s'affiche automatiquement.
 - **"Annuler l'envoi"** : si tu reperes un probleme en regardant la page
-  (que le tableau n'aurait pas detecte), rien n'est soumis et la page reste
-  ouverte pour que tu puisses l'inspecter ou la corriger toi-meme a la main.
+  (que le tableau n'aurait pas detecte), rien n'est soumis, la page se
+  referme automatiquement, et **tu restes sur ce meme document** : double-
+  clique sur la valeur en cause pour la corriger dans le tableau, puis
+  clique de nouveau sur "Remplir ce document" pour retenter avec la valeur
+  corrigee. Pas besoin de relancer tout le mode pas-a-pas.
 
 Le document passe ensuite au suivant automatiquement apres un envoi
 confirme avec succes. Pour les autres cibles (PDF, Word, Excel, application
