@@ -79,6 +79,10 @@ class AppConfig:
     browser: BrowserConfig
     watch: WatchConfig
     jobs: list[JobSpec]
+    # Nombre maximum de documents remplis par jour, tous modes confondus
+    # (None = illimite). Une fois la limite atteinte, l'agent s'arrete de
+    # traiter de nouveaux documents ; le compteur repart a zero le lendemain.
+    daily_limit: int | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -171,5 +175,6 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
             retry_interval_seconds=int(watch_raw.get("retry_interval_seconds", 15)),
         ),
         jobs=[_parse_job(j) for j in raw.get("jobs", [])],
+        daily_limit=int(raw["daily_limit"]) if raw.get("daily_limit") not in (None, "") else None,
         raw=raw,
     )

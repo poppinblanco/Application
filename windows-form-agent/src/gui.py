@@ -17,6 +17,7 @@ from ai.ollama_client import OllamaClient  # noqa: E402
 from config import load_config  # noqa: E402
 from main import DocumentAnalysis, analyze_document, apply_document, process_job, run_watch_forever  # noqa: E402
 from utils.files import find_matching_files  # noqa: E402
+from utils.state import daily_limit_reached, get_daily_count  # noqa: E402
 
 
 class QueueLogHandler(logging.Handler):
@@ -54,6 +55,7 @@ class AgentGUI:
         self._build_widgets()
         self._poll_log_queue()
         self._poll_step_queue()
+        self._refresh_daily_status()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _load_config(self) -> None:
@@ -86,6 +88,17 @@ class AgentGUI:
 
         self.run_button = ttk.Button(top_frame, text="Lancer une fois (tous les documents)", command=self._on_run)
         self.run_button.pack(side=tk.RIGHT)
+
+        limit_frame = ttk.Frame(self.root, padding=(10, 0, 10, 0))
+        limit_frame.pack(fill=tk.X)
+
+        ttk.Label(limit_frame, text="Limite de documents par jour (vide = illimite) :").pack(side=tk.LEFT)
+        initial_limit = str(self.config.daily_limit) if self.config and self.config.daily_limit else ""
+        self.daily_limit_var = tk.StringVar(value=initial_limit)
+        ttk.Entry(limit_frame, textvariable=self.daily_limit_var, width=8).pack(side=tk.LEFT, padx=8)
+
+        self.daily_status_var = tk.StringVar(value="")
+        ttk.Label(limit_frame, textvariable=self.daily_status_var).pack(side=tk.RIGHT)
 
         watch_frame = ttk.Frame(self.root, padding=(10, 0, 10, 10))
         watch_frame.pack(fill=tk.X)
@@ -187,9 +200,31 @@ class AgentGUI:
             return list(self.config.jobs)
         return [j for j in self.config.jobs if j.name == selected]
 
+    def _apply_daily_limit_from_ui(self) -> None:
+        """Reporte la valeur saisie dans le champ 'Limite par jour' sur la config,
+        avant de demarrer un traitement (lancer une fois / surveillance / pas-a-pas)."""
+        text = self.daily_limit_var.get().strip()
+        if not text:
+            self.config.daily_limit = None
+            return
+        try:
+            self.config.daily_limit = max(0, int(text))
+        except ValueError:
+            self._append_log(f"[ERREUR] Limite quotidienne invalide : '{text}' (nombre entier attendu).")
+
+    def _refresh_daily_status(self) -> None:
+        if self.config is not None:
+            count = get_daily_count()
+            if self.config.daily_limit:
+                self.daily_status_var.set(f"Documents remplis aujourd'hui : {count}/{self.config.daily_limit}")
+            else:
+                self.daily_status_var.set(f"Documents remplis aujourd'hui : {count} (illimite)")
+        self.root.after(2000, self._refresh_daily_status)
+
     # --- Traitement unique (tous les documents d'un coup) -------------------
 
     def _on_run(self) -> None:
+        self._apply_daily_limit_from_ui()
         self.run_button.state(["disabled"])
         threading.Thread(target=self._run_agent, daemon=True).start()
 
@@ -228,6 +263,7 @@ class AgentGUI:
             self._start_watch()
 
     def _start_watch(self) -> None:
+        self._apply_daily_limit_from_ui()
         self.run_button.state(["disabled"])
         self.watch_button.configure(text="Arreter la surveillance")
         self.watch_status_var.set("Mode automatique en chaine : en cours, dossier surveille en continu...")
@@ -307,6 +343,7 @@ class AgentGUI:
         self.root.after(200, self._poll_step_queue)
 
     def _on_step_start(self) -> None:
+        self._apply_daily_limit_from_ui()
         jobs = self._selected_jobs()
         if len(jobs) != 1:
             self._append_log(
@@ -370,12 +407,18 @@ class AgentGUI:
                     statut = "OK"
                 self.step_tree.insert("", tk.END, values=(field.name, value, statut))
 
-            if analysis.can_apply:
-                self.step_status_var.set(f"{position} -- valeurs valides, pret a remplir")
-                self.step_fill_button.state(["!disabled"])
-            else:
+            if not analysis.can_apply:
                 self.step_status_var.set(f"{position} -- erreurs detectees, corrige le document source ou ignore-le")
                 self.step_fill_button.state(["disabled"])
+            elif daily_limit_reached(self.config.daily_limit):
+                self.step_status_var.set(
+                    f"{position} -- limite quotidienne de {self.config.daily_limit} documents atteinte, "
+                    "remplissage bloque jusqu'a demain"
+                )
+                self.step_fill_button.state(["disabled"])
+            else:
+                self.step_status_var.set(f"{position} -- valeurs valides, pret a remplir")
+                self.step_fill_button.state(["!disabled"])
 
         self.step_skip_button.state(["!disabled"])
         self.step_stop_button.state(["!disabled"])

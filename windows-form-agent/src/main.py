@@ -8,6 +8,7 @@ Usage :
 from __future__ import annotations
 
 import argparse
+import datetime
 import logging
 import sys
 import time
@@ -26,9 +27,32 @@ from forms.office_form import fill_docx_template, fill_xlsx_template  # noqa: E4
 from forms.validation import ValidationResult, validate_fields  # noqa: E402
 from utils.files import find_matching_files  # noqa: E402
 from utils.logging_setup import setup_logging  # noqa: E402
-from utils.state import is_already_processed, load_state, mark_processed, save_state  # noqa: E402
+from utils.state import (  # noqa: E402
+    daily_limit_reached,
+    increment_daily_counter,
+    is_already_processed,
+    load_state,
+    mark_processed,
+    save_state,
+)
 
 logger = logging.getLogger(__name__)
+
+_daily_limit_notice_date: str | None = None
+
+
+def _notify_daily_limit_once(limit: int) -> None:
+    """Journalise l'atteinte de la limite quotidienne une seule fois par jour
+    (evite de spammer les logs a chaque cycle de surveillance)."""
+    global _daily_limit_notice_date
+    today = datetime.date.today().isoformat()
+    if _daily_limit_notice_date != today:
+        logger.warning(
+            "Limite quotidienne de %d documents atteinte : plus aucun document ne sera "
+            "rempli aujourd'hui. La limite sera reinitialisee demain.",
+            limit,
+        )
+        _daily_limit_notice_date = today
 
 
 @dataclass
@@ -76,6 +100,7 @@ def apply_document(config: AppConfig, analysis: DocumentAnalysis) -> str:
         )
         return "erreur"
 
+    increment_daily_counter()
     return "ok"
 
 
@@ -124,6 +149,10 @@ def process_job(
     for source_path in source_files:
         if state is not None and is_already_processed(state, source_path):
             continue
+
+        if not dry_run and daily_limit_reached(config.daily_limit):
+            _notify_daily_limit_once(config.daily_limit)
+            break
 
         outcome = process_single_file(config, job, client, source_path, dry_run)
         processed_count += 1
@@ -269,10 +298,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Surveille en continu le dossier source (VPN/partage) au lieu de traiter une seule fois",
     )
+    parser.add_argument(
+        "--daily-limit",
+        type=int,
+        default=None,
+        help="Nombre maximum de documents a remplir aujourd'hui (remplace la valeur de config.yaml)",
+    )
     args = parser.parse_args(argv)
 
     setup_logging()
     config = load_config(args.config)
+    if args.daily_limit is not None:
+        config.daily_limit = args.daily_limit
 
     client = OllamaClient(
         host=config.ollama.host,

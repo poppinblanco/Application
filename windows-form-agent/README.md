@@ -113,6 +113,25 @@ Une fois que tu as verifie sur plusieurs documents que l'extraction est
 fiable pour un job donne, tu peux passer au mode automatique en chaine
 ci-dessous pour ne plus avoir a valider chaque document manuellement.
 
+## Limite quotidienne de documents
+
+Tu peux fixer un nombre maximum de documents que l'agent a le droit de
+remplir par jour, tous modes confondus (traitement unique, surveillance
+continue, pas-a-pas) :
+
+- Dans `config.yaml`, cle `daily_limit` (ex: `daily_limit: 200`). Laisse
+  vide ou supprime la ligne pour ne pas avoir de limite.
+- Dans l'interface graphique, champ **"Limite de documents par jour"** en
+  haut de la fenetre (modifiable a tout moment, prend effet au prochain
+  demarrage d'un mode).
+- En ligne de commande : `--daily-limit 200`.
+
+Une fois la limite atteinte, l'agent arrete de remplir de nouveaux documents
+(le mode surveillance continue reste actif mais n'agit plus, pret a
+reprendre) et le compteur repart automatiquement a zero le lendemain. Le
+nombre de documents deja remplis aujourd'hui s'affiche en temps reel dans
+l'interface graphique.
+
 ## Mode automatique (surveillance continue du dossier partage)
 
 C'est le mode a utiliser pour le travail a distance : une fois demarre, plus

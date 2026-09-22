@@ -16,6 +16,13 @@ watch:
   interval_seconds: 30          # frequence de verification du dossier partage
   retry_interval_seconds: 15    # nouvelle tentative si le VPN/partage est coupe
 
+# Nombre maximum de documents remplis par jour, tous modes confondus
+# (traitement unique, surveillance continue, pas-a-pas). Une fois atteint,
+# l'agent s'arrete de remplir des documents jusqu'au lendemain (le compteur
+# repart automatiquement a zero a minuit). Laisse vide ou supprime la ligne
+# pour ne pas avoir de limite.
+daily_limit: 200
+
 # IA locale (open source) via Ollama : https://ollama.com
 # Installer Ollama, puis lancer par exemple :
 #   ollama pull llama3.2        (analyse de texte)
