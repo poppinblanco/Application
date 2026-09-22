@@ -65,6 +65,9 @@ class AgentGUI:
         self.step_job = None
         self.step_running = False
         self.step_stop_event: threading.Event | None = None
+        # Pause de verification (formulaire web) entre remplissage et envoi
+        self.pending_confirm_event: threading.Event | None = None
+        self.pending_confirm_decision: list | None = None
 
         self._build_widgets()
         self._poll_log_queue()
@@ -192,7 +195,7 @@ class AgentGUI:
         step_actions.pack(fill=tk.X)
 
         self.step_fill_button = ttk.Button(
-            step_actions, text="Remplir et valider ce document", command=self._on_step_fill, state="disabled"
+            step_actions, text="Remplir ce document", command=self._on_step_fill, state="disabled"
         )
         self.step_fill_button.pack(side=tk.LEFT)
 
@@ -205,6 +208,35 @@ class AgentGUI:
             step_actions, text="Arreter le mode pas-a-pas", command=self._on_step_stop, state="disabled"
         )
         self.step_stop_button.pack(side=tk.RIGHT)
+
+        # Pause de verification (formulaire web) : apparait une fois les
+        # champs remplis sur la vraie page, avant l'envoi definitif.
+        step_confirm_row = ttk.Frame(step_outer, padding=(0, 8, 0, 0))
+        step_confirm_row.pack(fill=tk.X)
+
+        self.step_confirm_status_var = tk.StringVar(value="")
+        ttk.Label(
+            step_confirm_row, textvariable=self.step_confirm_status_var, foreground="#a05a00"
+        ).pack(anchor=tk.W)
+
+        step_confirm_buttons = ttk.Frame(step_outer)
+        step_confirm_buttons.pack(fill=tk.X, pady=(2, 0))
+
+        self.step_confirm_submit_button = ttk.Button(
+            step_confirm_buttons,
+            text="Confirmer l'envoi",
+            command=self._on_confirm_submit,
+            state="disabled",
+        )
+        self.step_confirm_submit_button.pack(side=tk.LEFT)
+
+        self.step_cancel_submit_button = ttk.Button(
+            step_confirm_buttons,
+            text="Annuler l'envoi",
+            command=self._on_cancel_submit,
+            state="disabled",
+        )
+        self.step_cancel_submit_button.pack(side=tk.LEFT, padx=8)
 
         self.log_widget = scrolledtext.ScrolledText(self.root, state="disabled", height=14)
         self.log_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
@@ -519,10 +551,16 @@ class AgentGUI:
                     self._finish_step_mode()
                 elif kind == "interrupted":
                     self._append_log(
-                        f"Arret d'urgence : remplissage de {payload} interrompu en cours de route. "
-                        "La page/fenetre a ete laissee ouverte, verifie-la avant de continuer."
+                        f"Traitement de {payload} interrompu (arret d'urgence ou envoi annule apres "
+                        "verification). La page/fenetre a ete laissee ouverte, verifie-la avant de continuer."
                     )
                     self._finish_step_mode()
+                elif kind == "await_confirmation":
+                    self.step_confirm_status_var.set(
+                        "Champs remplis sur la page reelle -- verifie-la, puis confirme ou annule l'envoi ci-dessous."
+                    )
+                    self.step_confirm_submit_button.state(["!disabled"])
+                    self.step_cancel_submit_button.state(["!disabled"])
                 elif kind == "done":
                     self.step_status_var.set("Mode pas-a-pas termine : tous les documents ont ete traites.")
                     self._finish_step_mode()
@@ -654,8 +692,28 @@ class AgentGUI:
         threading.Thread(target=self._do_step_fill, daemon=True).start()
 
     def _do_step_fill(self) -> None:
+        # Pour un formulaire web, on marque une pause entre le remplissage et
+        # l'envoi : l'utilisateur regarde la vraie page, puis confirme ou
+        # annule depuis le programme (voir _on_confirm_submit/_on_cancel_submit).
+        is_web_form = self.step_current.job.target.type == "web_form"
+        confirm_event = threading.Event() if is_web_form else None
+        confirm_decision: list = [None] if is_web_form else None
+        if is_web_form:
+            self.pending_confirm_event = confirm_event
+            self.pending_confirm_decision = confirm_decision
+
+        def on_ready_for_review() -> None:
+            self.step_queue.put(("await_confirmation", None))
+
         try:
-            outcome = apply_document(self.config, self.step_current, stop_event=self.step_stop_event)
+            outcome = apply_document(
+                self.config,
+                self.step_current,
+                stop_event=self.step_stop_event,
+                confirm_event=confirm_event,
+                confirm_decision=confirm_decision,
+                on_ready_for_review=on_ready_for_review if is_web_form else None,
+            )
             if outcome == "interrompu":
                 self.step_queue.put(("interrupted", self.step_current.source_path.name))
                 return
@@ -664,6 +722,30 @@ class AgentGUI:
             self.step_queue.put(("applied", f"{self.step_current.source_path.name} ({outcome})"))
         except Exception as exc:  # noqa: BLE001
             self.step_queue.put(("error", str(exc)))
+        finally:
+            self.pending_confirm_event = None
+            self.pending_confirm_decision = None
+
+    def _on_confirm_submit(self) -> None:
+        if self.pending_confirm_event is None or self.pending_confirm_decision is None:
+            return
+        self._append_log("Envoi confirme apres verification.")
+        self.pending_confirm_decision[0] = "confirm"
+        self.pending_confirm_event.set()
+        self._reset_confirm_buttons("Envoi en cours...")
+
+    def _on_cancel_submit(self) -> None:
+        if self.pending_confirm_event is None or self.pending_confirm_decision is None:
+            return
+        self._append_log("Envoi annule apres verification -- page laissee ouverte, rien n'a ete soumis.")
+        self.pending_confirm_decision[0] = "cancel"
+        self.pending_confirm_event.set()
+        self._reset_confirm_buttons("Annulation en cours...")
+
+    def _reset_confirm_buttons(self, status_text: str = "") -> None:
+        self.step_confirm_status_var.set(status_text)
+        self.step_confirm_submit_button.state(["disabled"])
+        self.step_cancel_submit_button.state(["disabled"])
 
     def _on_step_skip(self) -> None:
         self._append_log(f"Document ignore : {self.step_current.source_path.name}")
@@ -685,15 +767,23 @@ class AgentGUI:
         self._append_log("Mode pas-a-pas arrete par l'utilisateur (arret d'urgence si un remplissage etait en cours).")
         if self.step_stop_event is not None:
             self.step_stop_event.set()
+        if self.pending_confirm_event is not None:
+            # Un remplissage web est en pause en attente de confirmation :
+            # on la debloque en "annule" pour ne pas la laisser bloquee.
+            self.pending_confirm_decision[0] = "cancel"
+            self.pending_confirm_event.set()
         self._finish_step_mode()
 
     def _finish_step_mode(self) -> None:
         self.step_running = False
         self.step_current = None
         self.step_stop_event = None
+        self.pending_confirm_event = None
+        self.pending_confirm_decision = None
         self.step_fill_button.state(["disabled"])
         self.step_skip_button.state(["disabled"])
         self.step_stop_button.state(["disabled"])
+        self._reset_confirm_buttons("")
         self.step_start_button.state(["!disabled"])
         self.run_button.state(["!disabled"])
         self.watch_button.state(["!disabled"])
@@ -705,6 +795,9 @@ class AgentGUI:
             self.watch_stop_event.set()
         if self.step_stop_event is not None:
             self.step_stop_event.set()
+        if self.pending_confirm_event is not None:
+            self.pending_confirm_decision[0] = "cancel"
+            self.pending_confirm_event.set()
         self.step_running = False
         self.root.destroy()
 

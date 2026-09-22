@@ -104,6 +104,9 @@ class BrowserSession:
         success_selector: str | None = None,
         timeout_ms: int = 15000,
         stop_event=None,
+        confirm_event=None,
+        confirm_decision: list | None = None,
+        on_ready_for_review=None,
     ) -> WebFormResult:
         """Ouvre une page, remplit les champs indiques, soumet, valide, ferme la page.
 
@@ -112,6 +115,17 @@ class BrowserSession:
         cours de route, on s'arrete immediatement sans cliquer sur Valider, et
         la page est laissee ouverte (non fermee) pour que l'utilisateur puisse
         l'inspecter ou la corriger lui-meme.
+
+        `confirm_event` (threading.Event), s'il est fourni, ajoute une pause
+        entre le remplissage et la validation finale : une fois les champs
+        remplis, la page reste ouverte et cette fonction attend
+        (`confirm_event.wait()`) que l'appelant (l'interface graphique)
+        signale la decision de l'utilisateur dans `confirm_decision[0]`
+        ("confirm" pour valider, autre chose pour annuler sans soumettre).
+        `on_ready_for_review`, s'il est fourni, est appele juste avant cette
+        attente (pour prevenir l'appelant que la page est prete a etre
+        inspectee). Tous les appels Playwright restent effectues depuis le
+        thread appelant : seule l'attente/le signal traversent les threads.
         """
         page = self.open_page(url)
         filled: list[str] = []
@@ -152,6 +166,23 @@ class BrowserSession:
                     missing_selectors=missing,
                     message=f"Selecteurs introuvables sur la page : {missing}",
                 )
+
+            if confirm_event is not None:
+                logger.info("Champs remplis, en attente de la confirmation de l'utilisateur avant l'envoi...")
+                if on_ready_for_review is not None:
+                    on_ready_for_review()
+                confirm_event.wait()
+                decision = confirm_decision[0] if confirm_decision else "confirm"
+                if decision != "confirm":
+                    interrupted = True
+                    logger.info("Envoi annule par l'utilisateur apres verification. Page laissee ouverte.")
+                    return WebFormResult(
+                        success=False,
+                        filled_fields=filled,
+                        missing_selectors=[],
+                        message="Envoi annule par l'utilisateur apres verification.",
+                        interrupted=True,
+                    )
 
             if stop_event is not None and stop_event.is_set():
                 interrupted = True

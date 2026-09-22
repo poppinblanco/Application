@@ -144,12 +144,32 @@ verifier document par document que l'IA extrait les bonnes valeurs :
 4. Tu decides :
    - **Double-clique sur une valeur** dans le tableau pour la corriger si
      l'IA s'est trompee (voir "Corriger une erreur de l'IA" ci-dessous).
-   - **"Remplir et valider ce document"** : remplit le formulaire cible avec
-     ces valeurs, puis passe automatiquement au document suivant.
+   - **"Remplir ce document"** : remplit le formulaire cible avec ces
+     valeurs.
    - **"Ignorer ce document"** : passe au suivant sans rien faire (utile si
      tu reperes une erreur et preferes corriger le document source avant).
    - **"Arreter le mode pas-a-pas"** : stoppe la revue a tout moment (et
      interrompt immediatement un remplissage en cours, arret d'urgence).
+
+### Pour un formulaire web : verification avant l'envoi definitif
+
+Pour une cible `web_form`, cliquer sur "Remplir ce document" ne soumet pas
+tout de suite : le navigateur s'ouvre, les champs sont remplis, **puis le
+programme s'arrete et attend** -- la page reste affichee, non soumise. Deux
+boutons apparaissent alors dans l'interface :
+
+- **"Confirmer l'envoi"** : regarde la page reelle une derniere fois, et si
+  tout est bon, valide -- le formulaire est alors soumis et la page se
+  ferme.
+- **"Annuler l'envoi"** : si tu reperes un probleme en regardant la page
+  (que le tableau n'aurait pas detecte), rien n'est soumis et la page reste
+  ouverte pour que tu puisses l'inspecter ou la corriger toi-meme a la main.
+
+Le document passe ensuite au suivant automatiquement apres un envoi
+confirme avec succes. Pour les autres cibles (PDF, Word, Excel, application
+Windows), "Remplir ce document" reste une action unique (pas de pause de
+verification intermediaire, puisqu'il n'y a pas de page a regarder avant
+l'ecriture du fichier).
 
 Une fois que tu as verifie sur plusieurs documents que l'extraction est
 fiable pour un job donne, tu peux passer au mode automatique en chaine

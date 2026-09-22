@@ -102,13 +102,25 @@ def analyze_document(config: AppConfig, job: JobSpec, client: OllamaClient, sour
     )
 
 
-def apply_document(config: AppConfig, analysis: DocumentAnalysis, stop_event=None) -> str:
+def apply_document(
+    config: AppConfig,
+    analysis: DocumentAnalysis,
+    stop_event=None,
+    confirm_event=None,
+    confirm_decision: list | None = None,
+    on_ready_for_review=None,
+) -> str:
     """Remplit/soumet le formulaire cible pour un document deja analyse et valide.
 
     `stop_event` (threading.Event), s'il est deja declenche ou se declenche en
     cours de remplissage, interrompt immediatement l'action en cours (champ
     par champ pour un formulaire web/desktop) au lieu d'attendre la fin du
     document. Le document n'est alors pas compte dans le quota quotidien.
+
+    `confirm_event`/`confirm_decision`/`on_ready_for_review` (formulaire web
+    uniquement) ajoutent une pause de verification visuelle entre le
+    remplissage et la validation finale -- voir
+    automation/browser.py:fill_and_submit_form.
     """
     if not analysis.can_apply:
         raise ValueError("Ce document n'a pas ete valide, impossible de le remplir.")
@@ -118,7 +130,16 @@ def apply_document(config: AppConfig, analysis: DocumentAnalysis, stop_event=Non
         return "interrompu"
 
     try:
-        interrupted = _apply_to_target(config, analysis.job, analysis.source_path, analysis.values, stop_event)
+        interrupted = _apply_to_target(
+            config,
+            analysis.job,
+            analysis.source_path,
+            analysis.values,
+            stop_event,
+            confirm_event=confirm_event,
+            confirm_decision=confirm_decision,
+            on_ready_for_review=on_ready_for_review,
+        )
     except Exception:
         logger.exception(
             "[%s] Echec de remplissage du formulaire pour %s.", analysis.job.name, analysis.source_path.name
@@ -236,9 +257,17 @@ def archive_source_if_needed(config: AppConfig, job: JobSpec, source_path: Path,
 
 
 def _apply_to_target(
-    config: AppConfig, job: JobSpec, source_path: Path, values: dict[str, str], stop_event=None
+    config: AppConfig,
+    job: JobSpec,
+    source_path: Path,
+    values: dict[str, str],
+    stop_event=None,
+    confirm_event=None,
+    confirm_decision: list | None = None,
+    on_ready_for_review=None,
 ) -> bool:
-    """Renvoie True si l'action a ete interrompue par un arret d'urgence."""
+    """Renvoie True si l'action a ete interrompue (arret d'urgence ou envoi
+    annule apres verification)."""
     output_dir = Path(config.output_folder)
     target = job.target
 
@@ -282,6 +311,9 @@ def _apply_to_target(
                 submit_selector=target.submit_selector,
                 success_selector=target.success_selector,
                 stop_event=stop_event,
+                confirm_event=confirm_event,
+                confirm_decision=confirm_decision,
+                on_ready_for_review=on_ready_for_review,
             )
         if result.interrupted:
             return True
