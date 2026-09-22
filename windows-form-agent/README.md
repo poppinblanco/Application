@@ -37,6 +37,13 @@ ou chemin UNC `\\serveur\partage\...`). Une fois le VPN connecte :
      champs via l'automatisation Windows (UI Automation), ferme la fenetre
 5. **Journalise** tout dans `logs/agent.log` et dans l'interface graphique.
 
+Important : ce programme se limite a **analyser et pre-remplir** les champs.
+Si ton entreprise dispose deja d'un outil qui deplace automatiquement les
+documents traites vers un dossier "Traites" (comme decrit par certains
+utilisateurs), cet agent n'interfere pas avec ca : il lit dans
+`source_folder` et ecrit le resultat rempli dans `output_folder`, sans
+toucher ni deplacer le document source original.
+
 Un mode de secours "vision d'ecran" (`src/automation/screen_agent.py`) existe
 pour les cas ou aucune des methodes ci-dessus n'est possible (logiciel sans
 API d'automatisation) : il prend une capture d'ecran, demande a un modele de
@@ -82,6 +89,29 @@ reellement sur la souris/le clavier.
 4. Double-cliquer sur `run.bat` : il cree un environnement Python isole
    (`.venv`), installe les dependances et les navigateurs Playwright au
    premier lancement, puis ouvre l'interface graphique.
+
+## Mode pas-a-pas (recommande pour commencer)
+
+Avant de faire confiance a la chaine 100% automatique, utilise ce mode pour
+verifier document par document que l'IA extrait les bonnes valeurs :
+
+1. Dans l'interface graphique, choisis un job precis dans la liste (pas
+   "(tous les jobs)").
+2. Clique sur **"Charger et analyser le 1er document"**.
+3. L'agent analyse le premier document trouve et affiche dans un tableau
+   chaque champ attendu, la valeur extraite par l'IA, et son statut
+   (`OK` ou le detail d'une erreur de format/champ manquant) -- sans rien
+   remplir ni soumettre.
+4. Tu decides :
+   - **"Remplir et valider ce document"** : remplit le formulaire cible avec
+     ces valeurs, puis passe automatiquement au document suivant.
+   - **"Ignorer ce document"** : passe au suivant sans rien faire (utile si
+     tu reperes une erreur et preferes corriger le document source avant).
+   - **"Arreter le mode pas-a-pas"** : stoppe la revue a tout moment.
+
+Une fois que tu as verifie sur plusieurs documents que l'extraction est
+fiable pour un job donne, tu peux passer au mode automatique en chaine
+ci-dessous pour ne plus avoir a valider chaque document manuellement.
 
 ## Mode automatique (surveillance continue du dossier partage)
 

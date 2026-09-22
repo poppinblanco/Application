@@ -9,13 +9,14 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, scrolledtext, ttk
+from tkinter import scrolledtext, ttk
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ai.ollama_client import OllamaClient  # noqa: E402
 from config import load_config  # noqa: E402
-from main import process_job, run_watch_forever  # noqa: E402
+from main import DocumentAnalysis, analyze_document, apply_document, process_job, run_watch_forever  # noqa: E402
+from utils.files import find_matching_files  # noqa: E402
 
 
 class QueueLogHandler(logging.Handler):
@@ -31,7 +32,7 @@ class AgentGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Agent de remplissage de formulaires")
-        self.root.geometry("720x480")
+        self.root.geometry("760x640")
 
         self.log_queue: queue.Queue[str] = queue.Queue()
         self.config = None
@@ -41,8 +42,18 @@ class AgentGUI:
         self.watch_stop_event: threading.Event | None = None
         self.watch_thread: threading.Thread | None = None
 
+        # Mode pas-a-pas
+        self.step_queue: queue.Queue = queue.Queue()
+        self.step_files: list[Path] = []
+        self.step_pos: int = 0
+        self.step_current: DocumentAnalysis | None = None
+        self.step_client: OllamaClient | None = None
+        self.step_job = None
+        self.step_running = False
+
         self._build_widgets()
         self._poll_log_queue()
+        self._poll_step_queue()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _load_config(self) -> None:
@@ -73,7 +84,7 @@ class AgentGUI:
             top_frame, text="Mode test (analyse sans remplir/soumettre)", variable=self.dry_run_var
         ).pack(side=tk.LEFT, padx=8)
 
-        self.run_button = ttk.Button(top_frame, text="Lancer une fois", command=self._on_run)
+        self.run_button = ttk.Button(top_frame, text="Lancer une fois (tous les documents)", command=self._on_run)
         self.run_button.pack(side=tk.RIGHT)
 
         watch_frame = ttk.Frame(self.root, padding=(10, 0, 10, 10))
@@ -81,7 +92,7 @@ class AgentGUI:
 
         interval = self.config.watch.interval_seconds if self.config else 30
         self.watch_status_var = tk.StringVar(
-            value=f"Mode automatique : arrete (dossier verifie toutes les {interval}s une fois demarre)"
+            value=f"Mode automatique en chaine : arrete (verification toutes les {interval}s une fois demarre)"
         )
         ttk.Label(watch_frame, textvariable=self.watch_status_var).pack(side=tk.LEFT)
 
@@ -90,7 +101,54 @@ class AgentGUI:
         )
         self.watch_button.pack(side=tk.RIGHT)
 
-        self.log_widget = scrolledtext.ScrolledText(self.root, state="disabled", height=22)
+        # --- Mode pas-a-pas -------------------------------------------------
+        step_outer = ttk.LabelFrame(
+            self.root,
+            text="Mode pas-a-pas (un document a la fois, avec verification avant remplissage)",
+            padding=10,
+        )
+        step_outer.pack(fill=tk.X, padx=10, pady=(0, 10))
+
+        step_controls = ttk.Frame(step_outer)
+        step_controls.pack(fill=tk.X)
+
+        self.step_status_var = tk.StringVar(value="Aucun document charge.")
+        ttk.Label(step_controls, textvariable=self.step_status_var).pack(side=tk.LEFT)
+
+        self.step_start_button = ttk.Button(
+            step_controls, text="Charger et analyser le 1er document", command=self._on_step_start
+        )
+        self.step_start_button.pack(side=tk.RIGHT)
+
+        columns = ("champ", "valeur", "statut")
+        self.step_tree = ttk.Treeview(step_outer, columns=columns, show="headings", height=6)
+        self.step_tree.heading("champ", text="Champ")
+        self.step_tree.heading("valeur", text="Valeur extraite par l'IA")
+        self.step_tree.heading("statut", text="Statut")
+        self.step_tree.column("champ", width=160)
+        self.step_tree.column("valeur", width=320)
+        self.step_tree.column("statut", width=200)
+        self.step_tree.pack(fill=tk.X, pady=8)
+
+        step_actions = ttk.Frame(step_outer)
+        step_actions.pack(fill=tk.X)
+
+        self.step_fill_button = ttk.Button(
+            step_actions, text="Remplir et valider ce document", command=self._on_step_fill, state="disabled"
+        )
+        self.step_fill_button.pack(side=tk.LEFT)
+
+        self.step_skip_button = ttk.Button(
+            step_actions, text="Ignorer ce document", command=self._on_step_skip, state="disabled"
+        )
+        self.step_skip_button.pack(side=tk.LEFT, padx=8)
+
+        self.step_stop_button = ttk.Button(
+            step_actions, text="Arreter le mode pas-a-pas", command=self._on_step_stop, state="disabled"
+        )
+        self.step_stop_button.pack(side=tk.RIGHT)
+
+        self.log_widget = scrolledtext.ScrolledText(self.root, state="disabled", height=14)
         self.log_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         if self.config_error:
@@ -98,6 +156,7 @@ class AgentGUI:
             self._append_log("Copie 'config.example.yaml' vers 'config.yaml' et adapte-le, puis relance l'application.")
             self.run_button.state(["disabled"])
             self.watch_button.state(["disabled"])
+            self.step_start_button.state(["disabled"])
 
     def _append_log(self, message: str) -> None:
         self.log_widget.configure(state="normal")
@@ -114,6 +173,22 @@ class AgentGUI:
             pass
         self.root.after(200, self._poll_log_queue)
 
+    def _make_client(self) -> OllamaClient:
+        return OllamaClient(
+            host=self.config.ollama.host,
+            text_model=self.config.ollama.text_model,
+            vision_model=self.config.ollama.vision_model,
+            timeout_seconds=self.config.ollama.timeout_seconds,
+        )
+
+    def _selected_jobs(self) -> list:
+        selected = self.job_var.get()
+        if selected == "(tous les jobs)":
+            return list(self.config.jobs)
+        return [j for j in self.config.jobs if j.name == selected]
+
+    # --- Traitement unique (tous les documents d'un coup) -------------------
+
     def _on_run(self) -> None:
         self.run_button.state(["disabled"])
         threading.Thread(target=self._run_agent, daemon=True).start()
@@ -126,12 +201,7 @@ class AgentGUI:
         root_logger.setLevel(logging.INFO)
 
         try:
-            client = OllamaClient(
-                host=self.config.ollama.host,
-                text_model=self.config.ollama.text_model,
-                vision_model=self.config.ollama.vision_model,
-                timeout_seconds=self.config.ollama.timeout_seconds,
-            )
+            client = self._make_client()
             if not client.is_available():
                 self.log_queue.put(
                     f"[ERREUR] Ollama injoignable sur {self.config.ollama.host}. "
@@ -139,12 +209,7 @@ class AgentGUI:
                 )
                 return
 
-            selected = self.job_var.get()
-            jobs = self.config.jobs if selected == "(tous les jobs)" else [
-                j for j in self.config.jobs if j.name == selected
-            ]
-
-            for job in jobs:
+            for job in self._selected_jobs():
                 process_job(self.config, job, client, dry_run=self.dry_run_var.get())
 
             self.log_queue.put("Traitement termine.")
@@ -153,6 +218,8 @@ class AgentGUI:
         finally:
             root_logger.removeHandler(handler)
             self.root.after(0, lambda: self.run_button.state(["!disabled"]))
+
+    # --- Surveillance continue -----------------------------------------------
 
     def _on_toggle_watch(self) -> None:
         if self.watch_thread is not None and self.watch_thread.is_alive():
@@ -163,14 +230,14 @@ class AgentGUI:
     def _start_watch(self) -> None:
         self.run_button.state(["disabled"])
         self.watch_button.configure(text="Arreter la surveillance")
-        self.watch_status_var.set("Mode automatique : en cours, dossier surveille en continu...")
+        self.watch_status_var.set("Mode automatique en chaine : en cours, dossier surveille en continu...")
 
         self.watch_stop_event = threading.Event()
         self.watch_thread = threading.Thread(target=self._run_watch, daemon=True)
         self.watch_thread.start()
 
     def _stop_watch(self) -> None:
-        self.watch_status_var.set("Mode automatique : arret en cours...")
+        self.watch_status_var.set("Mode automatique en chaine : arret en cours...")
         if self.watch_stop_event is not None:
             self.watch_stop_event.set()
 
@@ -182,12 +249,7 @@ class AgentGUI:
         root_logger.setLevel(logging.INFO)
 
         try:
-            client = OllamaClient(
-                host=self.config.ollama.host,
-                text_model=self.config.ollama.text_model,
-                vision_model=self.config.ollama.vision_model,
-                timeout_seconds=self.config.ollama.timeout_seconds,
-            )
+            client = self._make_client()
             if not client.is_available():
                 self.log_queue.put(
                     f"[ERREUR] Ollama injoignable sur {self.config.ollama.host}. "
@@ -195,15 +257,10 @@ class AgentGUI:
                 )
                 return
 
-            selected = self.job_var.get()
-            jobs = self.config.jobs if selected == "(tous les jobs)" else [
-                j for j in self.config.jobs if j.name == selected
-            ]
-
             run_watch_forever(
                 self.config,
                 client,
-                jobs,
+                self._selected_jobs(),
                 dry_run=self.dry_run_var.get(),
                 stop_event=self.watch_stop_event,
             )
@@ -219,20 +276,165 @@ class AgentGUI:
         self.run_button.state(["!disabled"])
         interval = self.config.watch.interval_seconds if self.config else 30
         self.watch_status_var.set(
-            f"Mode automatique : arrete (dossier verifie toutes les {interval}s une fois demarre)"
+            f"Mode automatique en chaine : arrete (verification toutes les {interval}s une fois demarre)"
         )
         self.watch_thread = None
         self.watch_stop_event = None
 
+    # --- Mode pas-a-pas -------------------------------------------------------
+    #
+    # Traite un seul document a la fois : les valeurs extraites par l'IA sont
+    # affichees avant tout remplissage, pour reperer une erreur (format,
+    # champ manquant, etc.) avant de passer au document suivant.
+
+    def _poll_step_queue(self) -> None:
+        try:
+            while True:
+                kind, payload = self.step_queue.get_nowait()
+                if kind == "analysis":
+                    self._show_step_analysis(payload)
+                elif kind == "applied":
+                    self._append_log(f"Document rempli : {payload}")
+                    self._advance_step()
+                elif kind == "error":
+                    self._append_log(f"[ERREUR] {payload}")
+                    self._finish_step_mode()
+                elif kind == "done":
+                    self.step_status_var.set("Mode pas-a-pas termine : tous les documents ont ete traites.")
+                    self._finish_step_mode()
+        except queue.Empty:
+            pass
+        self.root.after(200, self._poll_step_queue)
+
+    def _on_step_start(self) -> None:
+        jobs = self._selected_jobs()
+        if len(jobs) != 1:
+            self._append_log(
+                "[ERREUR] Choisis un seul job precis (pas '(tous les jobs)') pour le mode pas-a-pas."
+            )
+            return
+
+        self.step_job = jobs[0]
+        self.step_start_button.state(["disabled"])
+        self.run_button.state(["disabled"])
+        self.watch_button.state(["disabled"])
+        self.step_status_var.set("Recherche des documents...")
+
+        threading.Thread(target=self._init_step_mode, daemon=True).start()
+
+    def _init_step_mode(self) -> None:
+        try:
+            self.step_client = self._make_client()
+            if not self.step_client.is_available():
+                self.step_queue.put((
+                    "error",
+                    f"Ollama injoignable sur {self.config.ollama.host}. Installe/lance Ollama et telecharge un modele.",
+                ))
+                return
+
+            self.step_files = find_matching_files(self.config.source_folder, self.step_job.source_pattern)
+            self.step_pos = 0
+            self.step_running = True
+
+            if not self.step_files:
+                self.step_queue.put(("error", f"Aucun document trouve pour le job '{self.step_job.name}'."))
+                return
+
+            self._run_step_analysis()
+        except Exception as exc:  # noqa: BLE001
+            self.step_queue.put(("error", str(exc)))
+
+    def _run_step_analysis(self) -> None:
+        source_path = self.step_files[self.step_pos]
+        analysis = analyze_document(self.config, self.step_job, self.step_client, source_path)
+        self.step_queue.put(("analysis", analysis))
+
+    def _show_step_analysis(self, analysis: DocumentAnalysis) -> None:
+        self.step_current = analysis
+        for row in self.step_tree.get_children():
+            self.step_tree.delete(row)
+
+        position = f"Document {self.step_pos + 1}/{len(self.step_files)} : {analysis.source_path.name}"
+
+        if analysis.error is not None:
+            self.step_tree.insert("", tk.END, values=("(lecture/IA)", "", f"Erreur : {analysis.error}"))
+            self.step_status_var.set(f"{position} -- echec de l'analyse")
+            self.step_fill_button.state(["disabled"])
+        else:
+            errors_by_field = {e.field_name: e.reason for e in (analysis.validation.errors if analysis.validation else [])}
+            for field in analysis.job.fields:
+                value = analysis.values.get(field.name, "")
+                if field.name in errors_by_field:
+                    statut = f"Erreur : {errors_by_field[field.name]}"
+                else:
+                    statut = "OK"
+                self.step_tree.insert("", tk.END, values=(field.name, value, statut))
+
+            if analysis.can_apply:
+                self.step_status_var.set(f"{position} -- valeurs valides, pret a remplir")
+                self.step_fill_button.state(["!disabled"])
+            else:
+                self.step_status_var.set(f"{position} -- erreurs detectees, corrige le document source ou ignore-le")
+                self.step_fill_button.state(["disabled"])
+
+        self.step_skip_button.state(["!disabled"])
+        self.step_stop_button.state(["!disabled"])
+
+    def _on_step_fill(self) -> None:
+        if self.step_current is None or not self.step_current.can_apply:
+            return
+        self.step_fill_button.state(["disabled"])
+        self.step_skip_button.state(["disabled"])
+        threading.Thread(target=self._do_step_fill, daemon=True).start()
+
+    def _do_step_fill(self) -> None:
+        try:
+            outcome = apply_document(self.config, self.step_current)
+            self.step_pos += 1
+            self.step_queue.put(("applied", f"{self.step_current.source_path.name} ({outcome})"))
+        except Exception as exc:  # noqa: BLE001
+            self.step_queue.put(("error", str(exc)))
+
+    def _on_step_skip(self) -> None:
+        self._append_log(f"Document ignore : {self.step_current.source_path.name}")
+        self.step_pos += 1
+        self._advance_step()
+
+    def _advance_step(self) -> None:
+        if not self.step_running:
+            return
+        if self.step_pos >= len(self.step_files):
+            self.step_queue.put(("done", None))
+            return
+        self.step_fill_button.state(["disabled"])
+        self.step_skip_button.state(["disabled"])
+        self.step_status_var.set("Analyse du document suivant...")
+        threading.Thread(target=self._run_step_analysis, daemon=True).start()
+
+    def _on_step_stop(self) -> None:
+        self._append_log("Mode pas-a-pas arrete par l'utilisateur.")
+        self._finish_step_mode()
+
+    def _finish_step_mode(self) -> None:
+        self.step_running = False
+        self.step_current = None
+        self.step_fill_button.state(["disabled"])
+        self.step_skip_button.state(["disabled"])
+        self.step_stop_button.state(["disabled"])
+        self.step_start_button.state(["!disabled"])
+        self.run_button.state(["!disabled"])
+        self.watch_button.state(["!disabled"])
+
     def _on_close(self) -> None:
         if self.watch_stop_event is not None:
             self.watch_stop_event.set()
+        self.step_running = False
         self.root.destroy()
 
 
 def main() -> None:
     root = tk.Tk()
-    app = AgentGUI(root)
+    AgentGUI(root)
     try:
         root.mainloop()
     except KeyboardInterrupt:

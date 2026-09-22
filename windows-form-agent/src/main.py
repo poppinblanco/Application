@@ -11,6 +11,7 @@ import argparse
 import logging
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -22,7 +23,7 @@ from documents.field_extractor import extract_fields  # noqa: E402
 from documents.reader import extract_text  # noqa: E402
 from forms.pdf_form import fill_pdf_form, read_pdf_form_values  # noqa: E402
 from forms.office_form import fill_docx_template, fill_xlsx_template  # noqa: E402
-from forms.validation import validate_fields  # noqa: E402
+from forms.validation import ValidationResult, validate_fields  # noqa: E402
 from utils.files import find_matching_files  # noqa: E402
 from utils.logging_setup import setup_logging  # noqa: E402
 from utils.state import is_already_processed, load_state, mark_processed, save_state  # noqa: E402
@@ -30,41 +31,75 @@ from utils.state import is_already_processed, load_state, mark_processed, save_s
 logger = logging.getLogger(__name__)
 
 
-def process_single_file(
-    config: AppConfig, job: JobSpec, client: OllamaClient, source_path: Path, dry_run: bool
-) -> str:
-    """Traite un seul document. Renvoie un statut court ("ok", "invalide", "erreur")."""
-    logger.info("[%s] Traitement de %s", job.name, source_path.name)
+@dataclass
+class DocumentAnalysis:
+    """Resultat d'analyse d'un document, avant tout remplissage (mode pas-a-pas)."""
 
+    source_path: Path
+    job: JobSpec
+    values: dict[str, str]
+    validation: ValidationResult | None
+    error: str | None = None
+
+    @property
+    def can_apply(self) -> bool:
+        return self.error is None and self.validation is not None and self.validation.is_valid
+
+
+def analyze_document(config: AppConfig, job: JobSpec, client: OllamaClient, source_path: Path) -> DocumentAnalysis:
+    """Lit et analyse un document via l'IA locale, sans remplir/soumettre le formulaire cible."""
+    logger.info("[%s] Analyse de %s", job.name, source_path.name)
     try:
         document_text = extract_text(source_path)
         values = extract_fields(client, document_text, job.fields)
-    except Exception:
-        # On capture large ici (lecture ou appel IA) : en mode surveillance,
-        # une exception non geree romprait la boucle a chaque cycle sur ce
-        # meme document. On journalise une fois et on marque "erreur" (le
-        # document ne sera pas retente automatiquement ; supprime son entree
-        # dans .state/processed.json pour forcer un nouvel essai).
-        logger.exception("[%s] Echec de traitement de %s, document ignore.", job.name, source_path.name)
-        return "erreur"
+    except Exception as exc:
+        logger.exception("[%s] Echec d'analyse de %s.", job.name, source_path.name)
+        return DocumentAnalysis(source_path=source_path, job=job, values={}, validation=None, error=str(exc))
 
     validation = validate_fields(job.fields, values)
-
     if not validation.is_valid:
-        logger.error("[%s] %s : %s", job.name, source_path.name, validation.summary())
-        return "invalide"
+        logger.warning("[%s] %s : %s", job.name, source_path.name, validation.summary())
 
-    if dry_run:
-        logger.info("[%s] (dry-run) Valeurs extraites et valides : %s", job.name, values)
-        return "ok"
+    return DocumentAnalysis(source_path=source_path, job=job, values=values, validation=validation)
+
+
+def apply_document(config: AppConfig, analysis: DocumentAnalysis) -> str:
+    """Remplit/soumet le formulaire cible pour un document deja analyse et valide."""
+    if not analysis.can_apply:
+        raise ValueError("Ce document n'a pas ete valide, impossible de le remplir.")
 
     try:
-        _apply_to_target(config, job, source_path, values)
+        _apply_to_target(config, analysis.job, analysis.source_path, analysis.values)
     except Exception:
-        logger.exception("[%s] Echec de remplissage du formulaire pour %s.", job.name, source_path.name)
+        logger.exception(
+            "[%s] Echec de remplissage du formulaire pour %s.", analysis.job.name, analysis.source_path.name
+        )
         return "erreur"
 
     return "ok"
+
+
+def process_single_file(
+    config: AppConfig, job: JobSpec, client: OllamaClient, source_path: Path, dry_run: bool
+) -> str:
+    """Traite un seul document de bout en bout (analyse + remplissage). Renvoie
+    un statut court ("ok", "invalide", "erreur"). Utilise par le mode traitement
+    unique et la surveillance continue ; le mode pas-a-pas utilise plutot
+    `analyze_document`/`apply_document` separement.
+    """
+    analysis = analyze_document(config, job, client, source_path)
+
+    if analysis.error is not None:
+        return "erreur"
+
+    if analysis.validation is not None and not analysis.validation.is_valid:
+        return "invalide"
+
+    if dry_run:
+        logger.info("[%s] (dry-run) Valeurs extraites et valides : %s", job.name, analysis.values)
+        return "ok"
+
+    return apply_document(config, analysis)
 
 
 def process_job(
