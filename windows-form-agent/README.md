@@ -110,6 +110,25 @@ reellement sur la souris/le clavier.
    (`.venv`), installe les dependances et les navigateurs Playwright au
    premier lancement, puis ouvre l'interface graphique.
 
+## Changer les dossiers ou l'URL plus tard
+
+Ces reglages (dossier source, dossier de sortie, dossier d'archive, URL du
+formulaire web) peuvent changer avec le temps -- pas besoin de rouvrir
+`config.yaml` a la main a chaque fois. Dans l'interface graphique, clique
+sur **"Parametres (dossiers, URL du formulaire)"** en haut de la fenetre :
+
+- Les trois dossiers ont un bouton **"Parcourir..."** pour les choisir
+  directement dans l'explorateur de fichiers.
+- Choisis un job dans la liste pour modifier son URL de formulaire web
+  (le champ est desactive si ce job cible autre chose qu'une page web,
+  ex: un PDF).
+- **"Enregistrer"** met a jour `config.yaml` directement -- les commentaires
+  d'aide du fichier sont conserves, seules les valeurs changent.
+
+Ce panneau est desactive pendant qu'un traitement est en cours (lancer une
+fois, surveillance continue ou pas-a-pas), pour ne pas changer un chemin en
+plein milieu d'un document.
+
 ## Mode pas-a-pas (recommande pour commencer)
 
 Avant de faire confiance a la chaine 100% automatique, utilise ce mode pour

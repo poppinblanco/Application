@@ -9,12 +9,13 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import scrolledtext, simpledialog, ttk
+from tkinter import filedialog, scrolledtext, simpledialog, ttk
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ai.ollama_client import OllamaClient  # noqa: E402
-from config import load_config  # noqa: E402
+from config import DEFAULT_CONFIG_PATH, EXAMPLE_CONFIG_PATH, load_config  # noqa: E402
+from config_writer import update_job_url, update_paths  # noqa: E402
 from forms.validation import validate_fields  # noqa: E402
 from main import (  # noqa: E402
     DocumentAnalysis,
@@ -81,7 +82,15 @@ class AgentGUI:
         # Chaque ligne ne combine qu'un texte long avec un seul bouton (ou
         # rien) : ca evite qu'une fenetre etroite tronque un libelle, ce
         # qu'un simple pack() cote a cote ne gere pas tout seul.
-        job_row = ttk.Frame(self.root, padding=(10, 10, 10, 4))
+        settings_row = ttk.Frame(self.root, padding=(10, 10, 10, 0))
+        settings_row.pack(fill=tk.X)
+
+        self.settings_button = ttk.Button(
+            settings_row, text="Parametres (dossiers, URL du formulaire)", command=self._open_settings_dialog
+        )
+        self.settings_button.pack(side=tk.RIGHT)
+
+        job_row = ttk.Frame(self.root, padding=(10, 8, 10, 4))
         job_row.pack(fill=tk.X)
 
         ttk.Label(job_row, text="Job a executer :").pack(side=tk.LEFT)
@@ -206,6 +215,7 @@ class AgentGUI:
             self.run_button.state(["disabled"])
             self.watch_button.state(["disabled"])
             self.step_start_button.state(["disabled"])
+            self.settings_button.state(["disabled"])
 
     def _append_log(self, message: str) -> None:
         self.log_widget.configure(state="normal")
@@ -256,6 +266,122 @@ class AgentGUI:
             else:
                 self.daily_status_var.set(f"Documents remplis aujourd'hui : {count} (illimite)")
         self.root.after(2000, self._refresh_daily_status)
+
+    # --- Parametres (dossiers, URL) -------------------------------------------
+    #
+    # Les dossiers (documents a traiter / copies remplies / documents deja
+    # traites) et l'URL du formulaire web peuvent changer avec le temps :
+    # ce panneau permet de les modifier sans editer config.yaml a la main.
+    # La sauvegarde reecrit config.yaml en conservant ses commentaires
+    # (voir config_writer.py).
+
+    def _is_busy(self) -> bool:
+        return (
+            (self.run_thread is not None and self.run_thread.is_alive())
+            or (self.watch_thread is not None and self.watch_thread.is_alive())
+            or self.step_running
+        )
+
+    def _open_settings_dialog(self) -> None:
+        if self._is_busy():
+            self._append_log(
+                "[ERREUR] Arrete le traitement en cours avant de changer les parametres "
+                "(dossiers/URL peuvent changer les resultats en plein milieu d'un traitement)."
+            )
+            return
+
+        if not DEFAULT_CONFIG_PATH.exists():
+            import shutil
+
+            shutil.copy(EXAMPLE_CONFIG_PATH, DEFAULT_CONFIG_PATH)
+            self._append_log(f"'{DEFAULT_CONFIG_PATH.name}' cree a partir de l'exemple fourni.")
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Parametres")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        def add_folder_row(label_text: str, initial_value: str) -> tk.StringVar:
+            row = ttk.Frame(dialog, padding=(10, 6, 10, 0))
+            row.pack(fill=tk.X)
+            ttk.Label(row, text=label_text).pack(anchor=tk.W)
+
+            sub_row = ttk.Frame(row)
+            sub_row.pack(fill=tk.X, pady=(2, 0))
+            var = tk.StringVar(value=initial_value)
+            entry = ttk.Entry(sub_row, textvariable=var, width=55)
+            entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            def browse() -> None:
+                chosen = filedialog.askdirectory(parent=dialog, initialdir=var.get() or str(DEFAULT_CONFIG_PATH.parent))
+                if chosen:
+                    var.set(chosen)
+
+            ttk.Button(sub_row, text="Parcourir...", command=browse).pack(side=tk.LEFT, padx=(6, 0))
+            return var
+
+        source_var = add_folder_row("Dossier source (documents a traiter) :", self.config.source_folder)
+        output_var = add_folder_row("Dossier de sortie (copies remplies PDF/Word/Excel) :", self.config.output_folder)
+        archive_var = add_folder_row(
+            "Dossier d'archive (documents deja traites, vide = ne jamais deplacer) :",
+            self.config.archive_folder or "",
+        )
+
+        ttk.Separator(dialog, orient="horizontal").pack(fill=tk.X, padx=10, pady=10)
+
+        url_section = ttk.Frame(dialog, padding=(10, 0, 10, 0))
+        url_section.pack(fill=tk.X)
+        ttk.Label(url_section, text="URL du formulaire web, pour un job donne :").pack(anchor=tk.W)
+
+        job_row = ttk.Frame(dialog, padding=(10, 4, 10, 0))
+        job_row.pack(fill=tk.X)
+        job_names = [j.name for j in self.config.jobs]
+        settings_job_var = tk.StringVar(value=job_names[0] if job_names else "")
+        job_combo = ttk.Combobox(job_row, textvariable=settings_job_var, values=job_names, state="readonly", width=40)
+        job_combo.pack(side=tk.LEFT)
+
+        url_row = ttk.Frame(dialog, padding=(10, 6, 10, 0))
+        url_row.pack(fill=tk.X)
+        url_var = tk.StringVar(value="")
+        url_entry = ttk.Entry(url_row, textvariable=url_var, width=55)
+        url_entry.pack(fill=tk.X)
+
+        def refresh_url_field(*_args) -> None:
+            job = next((j for j in self.config.jobs if j.name == settings_job_var.get()), None)
+            if job is None:
+                return
+            if job.target.type == "web_form":
+                url_var.set(job.target.url or "")
+                url_entry.state(["!disabled"])
+            else:
+                url_var.set(f"(ce job n'a pas d'URL -- cible : {job.target.type})")
+                url_entry.state(["disabled"])
+
+        settings_job_var.trace_add("write", refresh_url_field)
+        refresh_url_field()
+
+        button_row = ttk.Frame(dialog, padding=10)
+        button_row.pack(fill=tk.X)
+
+        def on_save() -> None:
+            try:
+                update_paths(
+                    source_folder=source_var.get().strip(),
+                    output_folder=output_var.get().strip(),
+                    archive_folder=archive_var.get().strip(),
+                )
+                job = next((j for j in self.config.jobs if j.name == settings_job_var.get()), None)
+                if job is not None and job.target.type == "web_form":
+                    update_job_url(job.name, url_var.get().strip())
+
+                self.config = load_config()
+                self._append_log("Parametres enregistres dans config.yaml.")
+                dialog.destroy()
+            except Exception as exc:  # noqa: BLE001
+                self._append_log(f"[ERREUR] Echec de l'enregistrement des parametres : {exc}")
+
+        ttk.Button(button_row, text="Annuler", command=dialog.destroy).pack(side=tk.RIGHT)
+        ttk.Button(button_row, text="Enregistrer", command=on_save).pack(side=tk.RIGHT, padx=(0, 8))
 
     # --- Traitement unique (tous les documents d'un coup) -------------------
 
