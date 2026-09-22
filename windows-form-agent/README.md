@@ -7,6 +7,20 @@ envoyee sur internet), puis remplit et valide automatiquement des
 formulaires : PDF, Word/Excel, pages web (Chrome/Firefox/Edge) ou
 applications Windows natives.
 
+## Cas d'usage : travail a distance sur un dossier partage (VPN)
+
+Ce programme est fait pour tourner sur **ton poste Windows** pendant que tu
+travailles a distance : le dossier `source_folder` peut etre un lecteur
+reseau que tu montes via ton VPN d'entreprise (lettre mappee type `Z:\...`
+ou chemin UNC `\\serveur\partage\...`). Une fois le VPN connecte :
+
+- en **mode automatique** (voir plus bas), l'agent verifie ce dossier partage
+  toutes les X secondes et traite tout nouveau document des qu'il est depose
+  (par toi ou par un collegue) ;
+- si la connexion VPN tombe, l'agent ne plante pas : il journalise un
+  avertissement et reessaie automatiquement des que le dossier redevient
+  accessible.
+
 ## Ce que fait le programme
 
 1. **Surveille** un dossier (ex: `Z:\Documents\A_traiter`, monte via ton VPN).
@@ -69,7 +83,27 @@ reellement sur la souris/le clavier.
    (`.venv`), installe les dependances et les navigateurs Playwright au
    premier lancement, puis ouvre l'interface graphique.
 
-## Lancer sans interface graphique (ligne de commande)
+## Mode automatique (surveillance continue du dossier partage)
+
+C'est le mode a utiliser pour le travail a distance : une fois demarre, plus
+besoin de relancer l'agent a chaque nouveau document.
+
+- **Interface graphique** : bouton "Demarrer la surveillance continue".
+  L'agent tourne alors en tache de fond, verifie le dossier partage toutes
+  les `interval_seconds` (reglable dans `config.yaml`, section `watch`), et
+  journalise chaque document traite. Bouton "Arreter la surveillance" pour
+  stopper proprement.
+- **Ligne de commande** :
+  ```
+  .venv\Scripts\python src\main.py --watch
+  .venv\Scripts\python src\main.py --watch --dry-run   REM sans remplir/soumettre, pour tester
+  ```
+
+Chaque document deja traite est memorise (dossier `.state/`, local a la
+machine) pour ne pas etre retraite au cycle suivant, sauf s'il est modifie
+ou remplace sur le dossier partage.
+
+## Lancer une seule fois (sans surveillance continue)
 
 ```
 .venv\Scripts\python src\main.py --dry-run        REM analyse + validation seulement
@@ -96,7 +130,7 @@ windows-form-agent/
   build_exe.bat           Construit l'executable Windows
   src/
     config.py             Chargement de config.yaml
-    main.py                Orchestrateur (CLI)
+    main.py                Orchestrateur (CLI) + boucle de surveillance continue
     gui.py                 Interface graphique (Tkinter)
     ai/ollama_client.py    Appels a l'IA locale (texte + vision)
     documents/             Lecture PDF/Word/Excel + extraction de champs via IA
@@ -105,13 +139,13 @@ windows-form-agent/
       browser.py           Formulaires web (Playwright : Chrome/Edge/Firefox)
       desktop.py           Applications Windows natives (pywinauto)
       screen_agent.py       Mode de secours vision d'ecran
-    utils/                  Logs, acces aux dossiers locaux/reseau
+    utils/                  Logs, acces aux dossiers locaux/reseau, suivi des documents traites (.state/)
 ```
 
 ## Prochaines etapes possibles
 
 - Ajouter un mapping de champs par glisser-deposer dans l'interface (au lieu
   d'editer `config.yaml` a la main).
-- Surveillance automatique du dossier source (traitement des nouveaux
-  fichiers des leur depot, sans relancer manuellement).
 - Rapport recapitulatif (documents traites/en erreur) exportable en PDF/CSV.
+- Demarrage automatique de la surveillance a l'ouverture de l'application
+  (au lieu de cliquer sur "Demarrer" a chaque fois).

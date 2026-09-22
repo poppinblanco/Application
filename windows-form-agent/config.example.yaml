@@ -8,6 +8,14 @@ source_folder: "Z:\\Documents\\A_traiter"
 # Dossier ou sont deposes les documents une fois remplis et valides.
 output_folder: "Z:\\Documents\\Traites"
 
+# Surveillance continue du dossier source : utile quand tu travailles a
+# distance sur un dossier partage (VPN) et veux que les nouveaux documents
+# soient traites automatiquement, sans relancer l'agent a chaque fois.
+watch:
+  enabled: true
+  interval_seconds: 30          # frequence de verification du dossier partage
+  retry_interval_seconds: 15    # nouvelle tentative si le VPN/partage est coupe
+
 # IA locale (open source) via Ollama : https://ollama.com
 # Installer Ollama, puis lancer par exemple :
 #   ollama pull llama3.2        (analyse de texte)

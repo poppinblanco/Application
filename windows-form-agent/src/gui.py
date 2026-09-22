@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ai.ollama_client import OllamaClient  # noqa: E402
 from config import load_config  # noqa: E402
-from main import process_job  # noqa: E402
+from main import process_job, run_watch_forever  # noqa: E402
 
 
 class QueueLogHandler(logging.Handler):
@@ -38,8 +38,12 @@ class AgentGUI:
         self.config_error = None
         self._load_config()
 
+        self.watch_stop_event: threading.Event | None = None
+        self.watch_thread: threading.Thread | None = None
+
         self._build_widgets()
         self._poll_log_queue()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _load_config(self) -> None:
         try:
@@ -69,16 +73,31 @@ class AgentGUI:
             top_frame, text="Mode test (analyse sans remplir/soumettre)", variable=self.dry_run_var
         ).pack(side=tk.LEFT, padx=8)
 
-        self.run_button = ttk.Button(top_frame, text="Lancer", command=self._on_run)
+        self.run_button = ttk.Button(top_frame, text="Lancer une fois", command=self._on_run)
         self.run_button.pack(side=tk.RIGHT)
 
-        self.log_widget = scrolledtext.ScrolledText(self.root, state="disabled", height=25)
+        watch_frame = ttk.Frame(self.root, padding=(10, 0, 10, 10))
+        watch_frame.pack(fill=tk.X)
+
+        interval = self.config.watch.interval_seconds if self.config else 30
+        self.watch_status_var = tk.StringVar(
+            value=f"Mode automatique : arrete (dossier verifie toutes les {interval}s une fois demarre)"
+        )
+        ttk.Label(watch_frame, textvariable=self.watch_status_var).pack(side=tk.LEFT)
+
+        self.watch_button = ttk.Button(
+            watch_frame, text="Demarrer la surveillance continue", command=self._on_toggle_watch
+        )
+        self.watch_button.pack(side=tk.RIGHT)
+
+        self.log_widget = scrolledtext.ScrolledText(self.root, state="disabled", height=22)
         self.log_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         if self.config_error:
             self._append_log(f"[ERREUR] Configuration invalide : {self.config_error}")
             self._append_log("Copie 'config.example.yaml' vers 'config.yaml' et adapte-le, puis relance l'application.")
             self.run_button.state(["disabled"])
+            self.watch_button.state(["disabled"])
 
     def _append_log(self, message: str) -> None:
         self.log_widget.configure(state="normal")
@@ -134,6 +153,81 @@ class AgentGUI:
         finally:
             root_logger.removeHandler(handler)
             self.root.after(0, lambda: self.run_button.state(["!disabled"]))
+
+    def _on_toggle_watch(self) -> None:
+        if self.watch_thread is not None and self.watch_thread.is_alive():
+            self._stop_watch()
+        else:
+            self._start_watch()
+
+    def _start_watch(self) -> None:
+        self.run_button.state(["disabled"])
+        self.watch_button.configure(text="Arreter la surveillance")
+        self.watch_status_var.set("Mode automatique : en cours, dossier surveille en continu...")
+
+        self.watch_stop_event = threading.Event()
+        self.watch_thread = threading.Thread(target=self._run_watch, daemon=True)
+        self.watch_thread.start()
+
+    def _stop_watch(self) -> None:
+        self.watch_status_var.set("Mode automatique : arret en cours...")
+        if self.watch_stop_event is not None:
+            self.watch_stop_event.set()
+
+    def _run_watch(self) -> None:
+        handler = QueueLogHandler(self.log_queue)
+        handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+        root_logger = logging.getLogger()
+        root_logger.addHandler(handler)
+        root_logger.setLevel(logging.INFO)
+
+        try:
+            client = OllamaClient(
+                host=self.config.ollama.host,
+                text_model=self.config.ollama.text_model,
+                vision_model=self.config.ollama.vision_model,
+                timeout_seconds=self.config.ollama.timeout_seconds,
+            )
+            if not client.is_available():
+                self.log_queue.put(
+                    f"[ERREUR] Ollama injoignable sur {self.config.ollama.host}. "
+                    "Installe/lance Ollama (https://ollama.com) et telecharge un modele."
+                )
+                return
+
+            selected = self.job_var.get()
+            jobs = self.config.jobs if selected == "(tous les jobs)" else [
+                j for j in self.config.jobs if j.name == selected
+            ]
+
+            run_watch_forever(
+                self.config,
+                client,
+                jobs,
+                dry_run=self.dry_run_var.get(),
+                stop_event=self.watch_stop_event,
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.log_queue.put(f"[ERREUR] {exc}")
+        finally:
+            root_logger.removeHandler(handler)
+            self.log_queue.put("Surveillance arretee.")
+            self.root.after(0, self._reset_watch_ui)
+
+    def _reset_watch_ui(self) -> None:
+        self.watch_button.configure(text="Demarrer la surveillance continue")
+        self.run_button.state(["!disabled"])
+        interval = self.config.watch.interval_seconds if self.config else 30
+        self.watch_status_var.set(
+            f"Mode automatique : arrete (dossier verifie toutes les {interval}s une fois demarre)"
+        )
+        self.watch_thread = None
+        self.watch_stop_event = None
+
+    def _on_close(self) -> None:
+        if self.watch_stop_event is not None:
+            self.watch_stop_event.set()
+        self.root.destroy()
 
 
 def main() -> None:

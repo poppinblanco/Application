@@ -63,11 +63,21 @@ class BrowserConfig:
 
 
 @dataclass
+class WatchConfig:
+    enabled: bool = False
+    interval_seconds: int = 30
+    # Si le dossier partage (VPN) devient injoignable, l'agent reessaie
+    # au lieu de s'arreter (utile en cas de coupure/reconnexion VPN).
+    retry_interval_seconds: int = 15
+
+
+@dataclass
 class AppConfig:
     source_folder: str
     output_folder: str
     ollama: OllamaConfig
     browser: BrowserConfig
+    watch: WatchConfig
     jobs: list[JobSpec]
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -138,6 +148,7 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
     raw = copy.deepcopy(raw)
     ollama_raw = raw.get("ollama", {}) or {}
     browser_raw = raw.get("browser", {}) or {}
+    watch_raw = raw.get("watch", {}) or {}
 
     browser_channel = validate_browser_channel(browser_raw.get("channel", "msedge"))
 
@@ -153,6 +164,11 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
         browser=BrowserConfig(
             channel=browser_channel,
             headless=bool(browser_raw.get("headless", False)),
+        ),
+        watch=WatchConfig(
+            enabled=bool(watch_raw.get("enabled", False)),
+            interval_seconds=int(watch_raw.get("interval_seconds", 30)),
+            retry_interval_seconds=int(watch_raw.get("retry_interval_seconds", 15)),
         ),
         jobs=[_parse_job(j) for j in raw.get("jobs", [])],
         raw=raw,
