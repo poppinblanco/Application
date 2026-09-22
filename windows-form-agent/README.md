@@ -110,6 +110,14 @@ reellement sur la souris/le clavier.
    (`.venv`), installe les dependances et les navigateurs Playwright au
    premier lancement, puis ouvre l'interface graphique.
 
+### PC verrouille / poste d'entreprise (aucune installation possible)
+
+Si tu ne peux pas installer Python ni Ollama (droits administrateur
+bloques), voir **[PORTABLE_BUILD.md](PORTABLE_BUILD.md)** : un mode
+100% portable, assemble une fois sur un PC avec un acces internet normal,
+puis copiable sur cle USB -- avec un moteur d'IA local alternatif
+(llama.cpp) qui ne necessite ni installateur ni service Windows.
+
 ## Changer les dossiers ou l'URL plus tard
 
 Ces reglages (dossier source, dossier de sortie, dossier d'archive, URL du

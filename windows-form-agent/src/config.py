@@ -59,6 +59,22 @@ class OllamaConfig:
 
 
 @dataclass
+class LlamaCppConfig:
+    """Moteur d'IA portable (llama-server.exe), alternative a Ollama sans
+    installation ni service Windows -- voir PORTABLE_BUILD.md. Les chemins
+    sont relatifs au dossier windows-form-agent/ (portable, sur cle USB)."""
+
+    server_path: str = "llamacpp/llama-server.exe"
+    model_path: str = "models/model.gguf"
+    host: str = "127.0.0.1"
+    port: int = 8080
+    context_size: int = 4096
+    # Si True, le programme demarre/arrete lui-meme llama-server.exe.
+    # Si False, l'utilisateur doit le lancer manuellement au prealable.
+    auto_start: bool = True
+
+
+@dataclass
 class BrowserConfig:
     channel: str = "msedge"
     headless: bool = False
@@ -94,6 +110,12 @@ class AppConfig:
     # mode automatique : sans deplacement, les documents traites resteraient
     # melanges avec ceux encore a faire dans source_folder.
     archive_folder: str | None = None
+    # "ollama" (par defaut) ou "llamacpp" (moteur portable, voir
+    # PORTABLE_BUILD.md -- pour un poste ou Ollama ne peut pas etre
+    # installe : llama-server.exe est un simple executable, sans
+    # installateur ni service Windows).
+    ai_engine: str = "ollama"
+    llamacpp: LlamaCppConfig = field(default_factory=LlamaCppConfig)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -176,8 +198,13 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
     ollama_raw = raw.get("ollama", {}) or {}
     browser_raw = raw.get("browser", {}) or {}
     watch_raw = raw.get("watch", {}) or {}
+    llamacpp_raw = raw.get("llamacpp", {}) or {}
 
     browser_channel = validate_browser_channel(browser_raw.get("channel", "msedge"))
+
+    ai_engine = str(raw.get("ai_engine", "ollama")).strip().lower()
+    if ai_engine not in ("ollama", "llamacpp"):
+        raise ValueError(f"ai_engine '{ai_engine}' inconnu. Valeurs possibles : 'ollama', 'llamacpp'.")
 
     return AppConfig(
         source_folder=raw["source_folder"],
@@ -201,5 +228,14 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
         jobs=[_parse_job(j) for j in raw.get("jobs", [])],
         daily_limit=int(raw["daily_limit"]) if raw.get("daily_limit") not in (None, "") else None,
         archive_folder=raw["archive_folder"] if raw.get("archive_folder") not in (None, "") else None,
+        ai_engine=ai_engine,
+        llamacpp=LlamaCppConfig(
+            server_path=str(PROJECT_ROOT / llamacpp_raw.get("server_path", "llamacpp/llama-server.exe")),
+            model_path=str(PROJECT_ROOT / llamacpp_raw.get("model_path", "models/model.gguf")),
+            host=llamacpp_raw.get("host", "127.0.0.1"),
+            port=int(llamacpp_raw.get("port", 8080)),
+            context_size=int(llamacpp_raw.get("context_size", 4096)),
+            auto_start=bool(llamacpp_raw.get("auto_start", True)),
+        ),
         raw=raw,
     )

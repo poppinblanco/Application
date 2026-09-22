@@ -1,4 +1,5 @@
-"""Utilise l'IA locale (Ollama) pour transformer un texte brut en champs structures.
+"""Utilise l'IA locale (Ollama ou llama.cpp, voir ai/factory.py) pour
+transformer un texte brut en champs structures.
 
 L'IA ne fait ici qu'une chose : lire un texte libre (facture, dossier, etc.)
 et en extraire les valeurs demandees, au format JSON. Toute la logique de
@@ -9,8 +10,8 @@ sans qu'on s'en rende compte.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
-from ai.ollama_client import OllamaClient
 from config import FieldSpec
 
 logger = logging.getLogger(__name__)
@@ -55,9 +56,10 @@ ci-dessus.
 
 
 def extract_fields(
-    client: OllamaClient, document_text: str, fields: list[FieldSpec], examples_text: str = ""
+    client: Any, document_text: str, fields: list[FieldSpec], examples_text: str = ""
 ) -> dict[str, str]:
-    """Renvoie {nom_du_champ: valeur} en s'appuyant sur le modele de texte local.
+    """Renvoie {nom_du_champ: valeur} en s'appuyant sur le modele de texte local
+    (`client` : OllamaClient ou LlamaCppClient, meme interface `extract_json`).
 
     `examples_text` (voir utils/examples.py) fournit des exemples de
     corrections precedentes pour guider l'IA sur des cas techniques.

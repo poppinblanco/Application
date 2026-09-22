@@ -13,7 +13,7 @@ from tkinter import filedialog, scrolledtext, simpledialog, ttk
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from ai.ollama_client import OllamaClient  # noqa: E402
+from ai.factory import make_ai_client, stop_ai_client  # noqa: E402
 from config import DEFAULT_CONFIG_PATH, EXAMPLE_CONFIG_PATH, load_config  # noqa: E402
 from config_writer import update_job_url, update_paths  # noqa: E402
 from forms.validation import validate_fields  # noqa: E402
@@ -49,6 +49,7 @@ class AgentGUI:
         self.config = None
         self.config_error = None
         self._load_config()
+        self._ai_client = None
 
         self.run_stop_event: threading.Event | None = None
         self.run_thread: threading.Thread | None = None
@@ -61,7 +62,7 @@ class AgentGUI:
         self.step_files: list[Path] = []
         self.step_pos: int = 0
         self.step_current: DocumentAnalysis | None = None
-        self.step_client: OllamaClient | None = None
+        self.step_client = None
         self.step_job = None
         self.step_running = False
         self.step_stop_event: threading.Event | None = None
@@ -264,13 +265,31 @@ class AgentGUI:
             pass
         self.root.after(200, self._poll_log_queue)
 
-    def _make_client(self) -> OllamaClient:
-        return OllamaClient(
-            host=self.config.ollama.host,
-            text_model=self.config.ollama.text_model,
-            vision_model=self.config.ollama.vision_model,
-            timeout_seconds=self.config.ollama.timeout_seconds,
+    def _make_client(self):
+        """Reutilise le meme client/processus IA d'un lancement a l'autre
+        dans cette session (recreer un moteur llama.cpp a chaque fois serait
+        lent : le chargement du modele prend plusieurs secondes/dizaines de
+        secondes). Voir _open_settings_dialog pour l'invalidation si la
+        config change."""
+        if self._ai_client is None:
+            self._ai_client = make_ai_client(self.config)
+        return self._ai_client
+
+    def _ai_unavailable_message(self) -> str:
+        if self.config.ai_engine == "llamacpp":
+            return (
+                f"Le moteur d'IA local (llama.cpp) ne repond pas sur {self.config.llamacpp.host}. "
+                "Verifie l'assemblage du paquet portable (voir PORTABLE_BUILD.md)."
+            )
+        return (
+            f"Ollama injoignable sur {self.config.ollama.host}. "
+            "Installe/lance Ollama (https://ollama.com) et telecharge un modele."
         )
+
+    def _reset_ai_client(self) -> None:
+        if self._ai_client is not None:
+            stop_ai_client(self._ai_client)
+            self._ai_client = None
 
     def _selected_jobs(self) -> list:
         selected = self.job_var.get()
@@ -443,10 +462,7 @@ class AgentGUI:
         try:
             client = self._make_client()
             if not client.is_available():
-                self.log_queue.put(
-                    f"[ERREUR] Ollama injoignable sur {self.config.ollama.host}. "
-                    "Installe/lance Ollama (https://ollama.com) et telecharge un modele."
-                )
+                self.log_queue.put(f"[ERREUR] {self._ai_unavailable_message()}")
                 return
 
             for job in self._selected_jobs():
@@ -500,10 +516,7 @@ class AgentGUI:
         try:
             client = self._make_client()
             if not client.is_available():
-                self.log_queue.put(
-                    f"[ERREUR] Ollama injoignable sur {self.config.ollama.host}. "
-                    "Installe/lance Ollama (https://ollama.com) et telecharge un modele."
-                )
+                self.log_queue.put(f"[ERREUR] {self._ai_unavailable_message()}")
                 return
 
             run_watch_forever(
@@ -598,10 +611,7 @@ class AgentGUI:
         try:
             self.step_client = self._make_client()
             if not self.step_client.is_available():
-                self.step_queue.put((
-                    "error",
-                    f"Ollama injoignable sur {self.config.ollama.host}. Installe/lance Ollama et telecharge un modele.",
-                ))
+                self.step_queue.put(("error", self._ai_unavailable_message()))
                 return
 
             self.step_files = find_matching_files(self.config.source_folder, self.step_job.source_pattern)
@@ -813,6 +823,7 @@ class AgentGUI:
             self.pending_confirm_decision[0] = "cancel"
             self.pending_confirm_event.set()
         self.step_running = False
+        self._reset_ai_client()
         self.root.destroy()
 
 

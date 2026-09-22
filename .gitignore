@@ -17,6 +17,12 @@ windows-form-agent/screenshots
 windows-form-agent/.state
 windows-form-agent/browser_profile
 windows-form-agent/examples
+# Paquet portable assemble localement (voir PORTABLE_BUILD.md) : gros
+# fichiers binaires (Python portable, moteur IA, modele, navigateur),
+# jamais dans le depot.
+windows-form-agent/python
+windows-form-agent/llamacpp
+windows-form-agent/models
 __pycache__
 *.pyc
 

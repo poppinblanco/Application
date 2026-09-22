@@ -14,10 +14,11 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from ai.ollama_client import OllamaClient  # noqa: E402
+from ai.factory import make_ai_client, stop_ai_client  # noqa: E402
 from automation.browser import BrowserSession  # noqa: E402
 from config import AppConfig, JobSpec, load_config  # noqa: E402
 from documents.field_extractor import extract_fields  # noqa: E402
@@ -38,6 +39,11 @@ from utils.state import (  # noqa: E402
 from utils.examples import add_example, format_examples_for_prompt, load_examples  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+# Un client IA (OllamaClient ou LlamaCppClient, voir ai/factory.py) : les
+# deux exposent la meme interface (is_available/ask_text/extract_json), ce
+# module n'a pas besoin de savoir lequel tourne.
+AIClient = Any
 
 _daily_limit_notice_date: str | None = None
 
@@ -77,7 +83,7 @@ class DocumentAnalysis:
         return bool(self.corrected_fields)
 
 
-def analyze_document(config: AppConfig, job: JobSpec, client: OllamaClient, source_path: Path) -> DocumentAnalysis:
+def analyze_document(config: AppConfig, job: JobSpec, client: AIClient, source_path: Path) -> DocumentAnalysis:
     """Lit et analyse un document via l'IA locale, sans remplir/soumettre le formulaire cible.
 
     Les corrections precedentes enregistrees pour ce job (voir
@@ -169,7 +175,7 @@ def apply_document(
 def process_single_file(
     config: AppConfig,
     job: JobSpec,
-    client: OllamaClient,
+    client: AIClient,
     source_path: Path,
     dry_run: bool,
     stop_event=None,
@@ -197,7 +203,7 @@ def process_single_file(
 def process_job(
     config: AppConfig,
     job: JobSpec,
-    client: OllamaClient,
+    client: AIClient,
     dry_run: bool,
     state: dict | None = None,
     stop_event=None,
@@ -357,7 +363,7 @@ def _apply_to_target(
 
 def run_watch_forever(
     config: AppConfig,
-    client: OllamaClient,
+    client: AIClient,
     jobs: list[JobSpec],
     dry_run: bool = False,
     stop_event=None,
@@ -439,37 +445,47 @@ def main(argv: list[str] | None = None) -> int:
     if args.daily_limit is not None:
         config.daily_limit = args.daily_limit
 
-    client = OllamaClient(
-        host=config.ollama.host,
-        text_model=config.ollama.text_model,
-        vision_model=config.ollama.vision_model,
-        timeout_seconds=config.ollama.timeout_seconds,
-    )
-    if not client.is_available():
-        logger.error(
-            "Impossible de joindre Ollama sur %s. Installe Ollama (https://ollama.com), "
-            "lance-le puis telecharge un modele avec 'ollama pull %s'.",
-            config.ollama.host,
-            config.ollama.text_model,
-        )
+    try:
+        client = make_ai_client(config)
+    except (FileNotFoundError, TimeoutError, RuntimeError) as exc:
+        logger.error("Impossible de demarrer le moteur d'IA local (%s) : %s", config.ai_engine, exc)
         return 1
 
-    jobs = [j for j in config.jobs if args.job is None or j.name == args.job]
-    if not jobs:
-        logger.error("Aucun job correspondant a '%s' dans la configuration.", args.job)
-        return 1
+    try:
+        if not client.is_available():
+            if config.ai_engine == "llamacpp":
+                logger.error(
+                    "Le moteur d'IA local (llama.cpp) ne repond pas sur %s. "
+                    "Verifie l'assemblage du paquet portable (voir PORTABLE_BUILD.md).",
+                    config.llamacpp.host,
+                )
+            else:
+                logger.error(
+                    "Impossible de joindre Ollama sur %s. Installe Ollama (https://ollama.com), "
+                    "lance-le puis telecharge un modele avec 'ollama pull %s'.",
+                    config.ollama.host,
+                    config.ollama.text_model,
+                )
+            return 1
 
-    if args.watch:
-        try:
-            run_watch_forever(config, client, jobs, dry_run=args.dry_run)
-        except KeyboardInterrupt:
-            logger.info("Surveillance arretee par l'utilisateur.")
+        jobs = [j for j in config.jobs if args.job is None or j.name == args.job]
+        if not jobs:
+            logger.error("Aucun job correspondant a '%s' dans la configuration.", args.job)
+            return 1
+
+        if args.watch:
+            try:
+                run_watch_forever(config, client, jobs, dry_run=args.dry_run)
+            except KeyboardInterrupt:
+                logger.info("Surveillance arretee par l'utilisateur.")
+            return 0
+
+        for job in jobs:
+            process_job(config, job, client, dry_run=args.dry_run)
+
         return 0
-
-    for job in jobs:
-        process_job(config, job, client, dry_run=args.dry_run)
-
-    return 0
+    finally:
+        stop_ai_client(client)
 
 
 if __name__ == "__main__":

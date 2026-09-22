@@ -34,8 +34,14 @@ watch:
 # pour ne pas avoir de limite.
 daily_limit: 200
 
-# IA locale (open source) via Ollama : https://ollama.com
-# Installer Ollama, puis lancer par exemple :
+# Moteur d'IA locale (open source) a utiliser : "ollama" (necessite
+# d'installer Ollama, https://ollama.com -- droits administrateur requis)
+# ou "llamacpp" (moteur 100% portable, un seul executable sans
+# installation ni service Windows -- voir PORTABLE_BUILD.md, ideal sur un
+# poste verrouille ou Ollama ne peut pas etre installe).
+ai_engine: "ollama"
+
+# Utilise si ai_engine = "ollama". Installer Ollama, puis lancer par ex :
 #   ollama pull llama3.2        (analyse de texte)
 #   ollama pull llava           (lecture d'ecran / images, optionnel)
 ollama:
@@ -43,6 +49,17 @@ ollama:
   text_model: "llama3.2"
   vision_model: "llava"
   timeout_seconds: 120
+
+# Utilise si ai_engine = "llamacpp" (voir PORTABLE_BUILD.md pour assembler
+# le dossier llamacpp/ et models/model.gguf). Le programme demarre et
+# arrete lui-meme llama-server.exe, aucune action manuelle necessaire.
+llamacpp:
+  server_path: "llamacpp/llama-server.exe"
+  model_path: "models/model.gguf"
+  host: "127.0.0.1"
+  port: 8080
+  context_size: 4096
+  auto_start: true
 
 # Navigateur utilise pour remplir des formulaires web.
 # Valeurs possibles : chromium, chrome, msedge, firefox
