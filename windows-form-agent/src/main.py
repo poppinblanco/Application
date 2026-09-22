@@ -12,7 +12,7 @@ import datetime
 import logging
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -35,6 +35,7 @@ from utils.state import (  # noqa: E402
     mark_processed,
     save_state,
 )
+from utils.examples import add_example, format_examples_for_prompt, load_examples  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -64,18 +65,30 @@ class DocumentAnalysis:
     values: dict[str, str]
     validation: ValidationResult | None
     error: str | None = None
+    document_text: str = ""
+    corrected_fields: set[str] = field(default_factory=set)
 
     @property
     def can_apply(self) -> bool:
         return self.error is None and self.validation is not None and self.validation.is_valid
 
+    @property
+    def corrected(self) -> bool:
+        return bool(self.corrected_fields)
+
 
 def analyze_document(config: AppConfig, job: JobSpec, client: OllamaClient, source_path: Path) -> DocumentAnalysis:
-    """Lit et analyse un document via l'IA locale, sans remplir/soumettre le formulaire cible."""
+    """Lit et analyse un document via l'IA locale, sans remplir/soumettre le formulaire cible.
+
+    Les corrections precedentes enregistrees pour ce job (voir
+    utils/examples.py) sont fournies a l'IA comme exemples, pour l'aider sur
+    des cas techniques deja rencontres.
+    """
     logger.info("[%s] Analyse de %s", job.name, source_path.name)
     try:
         document_text = extract_text(source_path)
-        values = extract_fields(client, document_text, job.fields)
+        examples_text = format_examples_for_prompt(load_examples(job.name))
+        values = extract_fields(client, document_text, job.fields, examples_text=examples_text)
     except Exception as exc:
         logger.exception("[%s] Echec d'analyse de %s.", job.name, source_path.name)
         return DocumentAnalysis(source_path=source_path, job=job, values={}, validation=None, error=str(exc))
@@ -84,7 +97,9 @@ def analyze_document(config: AppConfig, job: JobSpec, client: OllamaClient, sour
     if not validation.is_valid:
         logger.warning("[%s] %s : %s", job.name, source_path.name, validation.summary())
 
-    return DocumentAnalysis(source_path=source_path, job=job, values=values, validation=validation)
+    return DocumentAnalysis(
+        source_path=source_path, job=job, values=values, validation=validation, document_text=document_text
+    )
 
 
 def apply_document(config: AppConfig, analysis: DocumentAnalysis, stop_event=None) -> str:
@@ -112,6 +127,14 @@ def apply_document(config: AppConfig, analysis: DocumentAnalysis, stop_event=Non
 
     if interrupted:
         return "interrompu"
+
+    if analysis.corrected:
+        add_example(analysis.job.name, analysis.document_text, analysis.values)
+        logger.info(
+            "[%s] Correction enregistree comme exemple pour l'IA (document %s).",
+            analysis.job.name,
+            analysis.source_path.name,
+        )
 
     increment_daily_counter()
     return "ok"

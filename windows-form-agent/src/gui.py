@@ -9,12 +9,13 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import scrolledtext, ttk
+from tkinter import scrolledtext, simpledialog, ttk
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ai.ollama_client import OllamaClient  # noqa: E402
 from config import load_config  # noqa: E402
+from forms.validation import validate_fields  # noqa: E402
 from main import DocumentAnalysis, analyze_document, apply_document, process_job, run_watch_forever  # noqa: E402
 from utils.files import find_matching_files  # noqa: E402
 from utils.state import daily_limit_reached, get_daily_count  # noqa: E402
@@ -162,6 +163,14 @@ class AgentGUI:
         self.step_tree.column("valeur", width=320)
         self.step_tree.column("statut", width=200)
         self.step_tree.pack(fill=tk.X, pady=8)
+        self.step_tree.bind("<Double-1>", self._on_step_tree_double_click)
+
+        ttk.Label(
+            step_outer,
+            text="Astuce : double-clique sur une valeur pour la corriger si l'IA s'est trompee "
+            "-- la correction sera memorisee pour aider l'IA sur des documents similaires.",
+            foreground="#555555",
+        ).pack(fill=tk.X)
 
         step_actions = ttk.Frame(step_outer)
         step_actions.pack(fill=tk.X)
@@ -441,7 +450,7 @@ class AgentGUI:
         position = f"Document {self.step_pos + 1}/{len(self.step_files)} : {analysis.source_path.name}"
 
         if analysis.error is not None:
-            self.step_tree.insert("", tk.END, values=("(lecture/IA)", "", f"Erreur : {analysis.error}"))
+            self.step_tree.insert("", tk.END, iid="_error_", values=("(lecture/IA)", "", f"Erreur : {analysis.error}"))
             self.step_status_var.set(f"{position} -- echec de l'analyse")
             self.step_fill_button.state(["disabled"])
         else:
@@ -450,9 +459,11 @@ class AgentGUI:
                 value = analysis.values.get(field.name, "")
                 if field.name in errors_by_field:
                     statut = f"Erreur : {errors_by_field[field.name]}"
+                elif field.name in analysis.corrected_fields:
+                    statut = "OK (corrige manuellement)"
                 else:
                     statut = "OK"
-                self.step_tree.insert("", tk.END, values=(field.name, value, statut))
+                self.step_tree.insert("", tk.END, iid=field.name, values=(field.name, value, statut))
 
             if not analysis.can_apply:
                 self.step_status_var.set(f"{position} -- erreurs detectees, corrige le document source ou ignore-le")
@@ -469,6 +480,38 @@ class AgentGUI:
 
         self.step_skip_button.state(["!disabled"])
         self.step_stop_button.state(["!disabled"])
+
+    def _on_step_tree_double_click(self, event) -> None:
+        """Double-clic sur une valeur du tableau : permet de la corriger a la
+        main si l'IA s'est trompee. La correction est memorisee et servira
+        d'exemple pour l'IA sur des documents similaires (voir
+        utils/examples.py)."""
+        if self.step_current is None or self.step_current.error is not None:
+            return
+        if self.step_tree.identify("region", event.x, event.y) != "cell":
+            return
+        if self.step_tree.identify_column(event.x) != "#2":  # colonne "valeur"
+            return
+
+        field_name = self.step_tree.identify_row(event.y)
+        if not field_name:
+            return
+
+        current_value = self.step_current.values.get(field_name, "")
+        new_value = simpledialog.askstring(
+            "Corriger la valeur",
+            f"Valeur correcte pour '{field_name}' :",
+            initialvalue=current_value,
+            parent=self.root,
+        )
+        if new_value is None or new_value == current_value:
+            return
+
+        self.step_current.values[field_name] = new_value
+        self.step_current.corrected_fields.add(field_name)
+        self.step_current.validation = validate_fields(self.step_current.job.fields, self.step_current.values)
+        self._append_log(f"Valeur corrigee pour '{field_name}' : '{current_value}' -> '{new_value}'")
+        self._show_step_analysis(self.step_current)
 
     def _on_step_fill(self) -> None:
         if self.step_current is None or not self.step_current.can_apply:

@@ -122,15 +122,38 @@ verifier document par document que l'IA extrait les bonnes valeurs :
    (`OK` ou le detail d'une erreur de format/champ manquant) -- sans rien
    remplir ni soumettre.
 4. Tu decides :
+   - **Double-clique sur une valeur** dans le tableau pour la corriger si
+     l'IA s'est trompee (voir "Corriger une erreur de l'IA" ci-dessous).
    - **"Remplir et valider ce document"** : remplit le formulaire cible avec
      ces valeurs, puis passe automatiquement au document suivant.
    - **"Ignorer ce document"** : passe au suivant sans rien faire (utile si
      tu reperes une erreur et preferes corriger le document source avant).
-   - **"Arreter le mode pas-a-pas"** : stoppe la revue a tout moment.
+   - **"Arreter le mode pas-a-pas"** : stoppe la revue a tout moment (et
+     interrompt immediatement un remplissage en cours, arret d'urgence).
 
 Une fois que tu as verifie sur plusieurs documents que l'extraction est
 fiable pour un job donne, tu peux passer au mode automatique en chaine
 ci-dessous pour ne plus avoir a valider chaque document manuellement.
+
+## Corriger une erreur de l'IA (et l'aider pour la prochaine fois)
+
+L'IA locale ne retient rien d'un lancement a l'autre : sans aide, elle
+referait la meme erreur sur un document similaire. Pas besoin de tenir un
+journal d'erreurs a part : dans le **mode pas-a-pas**, double-clique
+directement sur une valeur incorrecte dans le tableau, saisis la bonne
+valeur, puis clique sur "Remplir et valider ce document" comme d'habitude.
+
+Cette correction est automatiquement enregistree dans `examples/<nom_du_job>.json`
+(un fichier par job, cree tout seul) et sera fournie a l'IA comme exemple
+lors des prochaines analyses de ce meme job -- elle peut ainsi eviter de
+refaire la meme erreur sur des documents au format proche. Les 5 exemples
+les plus recents sont utilises a chaque analyse (les plus anciens sont
+progressivement oublies, jusqu'a 20 conserves au total par job).
+
+Ce n'est pas de l'apprentissage automatique (le modele lui-meme ne change
+pas) : c'est un aide-memoire que l'IA relit a chaque fois, limite mais
+simple et transparent -- tu peux ouvrir ces fichiers `.json` a tout moment
+pour voir exactement ce qui a ete enregistre, ou en supprimer un si besoin.
 
 ## Limite quotidienne de documents
 

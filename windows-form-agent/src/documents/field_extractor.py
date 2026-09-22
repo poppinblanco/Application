@@ -16,7 +16,7 @@ from config import FieldSpec
 logger = logging.getLogger(__name__)
 
 
-def build_extraction_prompt(document_text: str, fields: list[FieldSpec]) -> str:
+def build_extraction_prompt(document_text: str, fields: list[FieldSpec], examples_text: str = "") -> str:
     field_lines = []
     for f in fields:
         hint = f" ({f.description})" if f.description else ""
@@ -24,8 +24,19 @@ def build_extraction_prompt(document_text: str, fields: list[FieldSpec]) -> str:
 
     fields_desc = "\n".join(field_lines)
 
-    return f"""Tu es un assistant qui extrait des informations precises d'un document.
+    examples_block = ""
+    if examples_text:
+        examples_block = f"""
+Voici des exemples de corrections faites par l'utilisateur sur des documents
+similaires par le passe : inspire-toi en pour ne pas refaire les memes
+erreurs d'extraction sur des cas proches.
+---
+{examples_text}
+---
+"""
 
+    return f"""Tu es un assistant qui extrait des informations precises d'un document.
+{examples_block}
 Voici le contenu du document :
 ---
 {document_text}
@@ -44,10 +55,14 @@ ci-dessus.
 
 
 def extract_fields(
-    client: OllamaClient, document_text: str, fields: list[FieldSpec]
+    client: OllamaClient, document_text: str, fields: list[FieldSpec], examples_text: str = ""
 ) -> dict[str, str]:
-    """Renvoie {nom_du_champ: valeur} en s'appuyant sur le modele de texte local."""
-    prompt = build_extraction_prompt(document_text, fields)
+    """Renvoie {nom_du_champ: valeur} en s'appuyant sur le modele de texte local.
+
+    `examples_text` (voir utils/examples.py) fournit des exemples de
+    corrections precedentes pour guider l'IA sur des cas techniques.
+    """
+    prompt = build_extraction_prompt(document_text, fields, examples_text)
     result = client.extract_json(prompt)
 
     extracted: dict[str, str] = {}
