@@ -33,7 +33,8 @@ class AgentGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Agent de remplissage de formulaires")
-        self.root.geometry("760x640")
+        self.root.geometry("780x720")
+        self.root.minsize(780, 620)
 
         self.log_queue: queue.Queue[str] = queue.Queue()
         self.config = None
@@ -65,49 +66,61 @@ class AgentGUI:
             self.config_error = str(exc)
 
     def _build_widgets(self) -> None:
-        top_frame = ttk.Frame(self.root, padding=10)
-        top_frame.pack(fill=tk.X)
+        # Chaque ligne ne combine qu'un texte long avec un seul bouton (ou
+        # rien) : ca evite qu'une fenetre etroite tronque un libelle, ce
+        # qu'un simple pack() cote a cote ne gere pas tout seul.
+        job_row = ttk.Frame(self.root, padding=(10, 10, 10, 4))
+        job_row.pack(fill=tk.X)
 
-        ttk.Label(top_frame, text="Job a executer :").pack(side=tk.LEFT)
+        ttk.Label(job_row, text="Job a executer :").pack(side=tk.LEFT)
 
         job_names = [j.name for j in self.config.jobs] if self.config else []
         self.job_var = tk.StringVar(value="(tous les jobs)")
         self.job_combo = ttk.Combobox(
-            top_frame,
+            job_row,
             textvariable=self.job_var,
             values=["(tous les jobs)"] + job_names,
             state="readonly",
-            width=40,
+            width=35,
         )
         self.job_combo.pack(side=tk.LEFT, padx=8)
 
-        self.dry_run_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            top_frame, text="Mode test (analyse sans remplir/soumettre)", variable=self.dry_run_var
-        ).pack(side=tk.LEFT, padx=8)
-
-        self.run_button = ttk.Button(top_frame, text="Lancer une fois (tous les documents)", command=self._on_run)
+        self.run_button = ttk.Button(job_row, text="Lancer une fois", command=self._on_run)
         self.run_button.pack(side=tk.RIGHT)
 
-        limit_frame = ttk.Frame(self.root, padding=(10, 0, 10, 0))
-        limit_frame.pack(fill=tk.X)
+        options_row = ttk.Frame(self.root, padding=(10, 0, 10, 4))
+        options_row.pack(fill=tk.X)
 
-        ttk.Label(limit_frame, text="Limite de documents par jour (vide = illimite) :").pack(side=tk.LEFT)
+        self.dry_run_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            options_row, text="Mode test (analyse sans remplir/soumettre)", variable=self.dry_run_var
+        ).pack(side=tk.LEFT)
+
+        limit_row = ttk.Frame(self.root, padding=(10, 0, 10, 4))
+        limit_row.pack(fill=tk.X)
+
+        ttk.Label(limit_row, text="Limite de documents par jour (vide = illimite) :").pack(side=tk.LEFT)
         initial_limit = str(self.config.daily_limit) if self.config and self.config.daily_limit else ""
         self.daily_limit_var = tk.StringVar(value=initial_limit)
-        ttk.Entry(limit_frame, textvariable=self.daily_limit_var, width=8).pack(side=tk.LEFT, padx=8)
+        ttk.Entry(limit_row, textvariable=self.daily_limit_var, width=8).pack(side=tk.LEFT, padx=8)
+
+        status_row = ttk.Frame(self.root, padding=(10, 0, 10, 4))
+        status_row.pack(fill=tk.X)
 
         self.daily_status_var = tk.StringVar(value="")
-        ttk.Label(limit_frame, textvariable=self.daily_status_var).pack(side=tk.RIGHT)
+        ttk.Label(status_row, textvariable=self.daily_status_var).pack(side=tk.LEFT)
 
-        watch_frame = ttk.Frame(self.root, padding=(10, 0, 10, 10))
-        watch_frame.pack(fill=tk.X)
+        watch_status_row = ttk.Frame(self.root, padding=(10, 4, 10, 0))
+        watch_status_row.pack(fill=tk.X)
 
         interval = self.config.watch.interval_seconds if self.config else 30
         self.watch_status_var = tk.StringVar(
             value=f"Mode automatique en chaine : arrete (verification toutes les {interval}s une fois demarre)"
         )
-        ttk.Label(watch_frame, textvariable=self.watch_status_var).pack(side=tk.LEFT)
+        ttk.Label(watch_status_row, textvariable=self.watch_status_var, wraplength=680).pack(side=tk.LEFT)
+
+        watch_frame = ttk.Frame(self.root, padding=(10, 0, 10, 10))
+        watch_frame.pack(fill=tk.X)
 
         self.watch_button = ttk.Button(
             watch_frame, text="Demarrer la surveillance continue", command=self._on_toggle_watch
@@ -122,11 +135,14 @@ class AgentGUI:
         )
         step_outer.pack(fill=tk.X, padx=10, pady=(0, 10))
 
-        step_controls = ttk.Frame(step_outer)
-        step_controls.pack(fill=tk.X)
+        step_status_row = ttk.Frame(step_outer)
+        step_status_row.pack(fill=tk.X)
 
         self.step_status_var = tk.StringVar(value="Aucun document charge.")
-        ttk.Label(step_controls, textvariable=self.step_status_var).pack(side=tk.LEFT)
+        ttk.Label(step_status_row, textvariable=self.step_status_var, wraplength=700).pack(side=tk.LEFT)
+
+        step_controls = ttk.Frame(step_outer)
+        step_controls.pack(fill=tk.X, pady=(4, 0))
 
         self.step_start_button = ttk.Button(
             step_controls, text="Charger et analyser le 1er document", command=self._on_step_start
