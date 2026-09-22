@@ -25,7 +25,7 @@ from documents.reader import extract_text  # noqa: E402
 from forms.pdf_form import fill_pdf_form, read_pdf_form_values  # noqa: E402
 from forms.office_form import fill_docx_template, fill_xlsx_template  # noqa: E402
 from forms.validation import ValidationResult, validate_fields  # noqa: E402
-from utils.files import find_matching_files  # noqa: E402
+from utils.files import find_matching_files, move_to_archive  # noqa: E402
 from utils.logging_setup import setup_logging  # noqa: E402
 from utils.state import (  # noqa: E402
     daily_limit_reached,
@@ -205,10 +205,34 @@ def process_job(
         outcome = process_single_file(config, job, client, source_path, dry_run, stop_event=stop_event)
         processed_count += 1
 
+        # Important : marquer l'etat AVANT de deplacer le fichier, car
+        # mark_processed a besoin de lire sa date/taille a son emplacement
+        # d'origine (une fois deplace, le fichier n'y est plus).
         if state is not None and not dry_run and outcome != "interrompu":
             mark_processed(state, source_path, outcome)
 
+        if not dry_run:
+            archive_source_if_needed(config, job, source_path, outcome)
+
     return processed_count
+
+
+def archive_source_if_needed(config: AppConfig, job: JobSpec, source_path: Path, outcome: str) -> None:
+    """Deplace le document source vers `config.archive_folder` s'il a ete
+    rempli avec succes (outcome == "ok"). Ne fait rien si aucun dossier
+    d'archive n'est configure, ou si le document n'a pas ete traite avec
+    succes (laisse en place pour inspection/nouvelle tentative)."""
+    if outcome != "ok" or not config.archive_folder:
+        return
+    try:
+        move_to_archive(source_path, config.archive_folder)
+    except Exception:
+        logger.exception(
+            "[%s] Echec du deplacement de %s vers le dossier d'archive '%s'.",
+            job.name,
+            source_path.name,
+            config.archive_folder,
+        )
 
 
 def _apply_to_target(

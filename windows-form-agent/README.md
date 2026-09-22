@@ -35,14 +35,15 @@ ou chemin UNC `\\serveur\partage\...`). Une fois le VPN connecte :
      champs, soumet, verifie le message de confirmation, ferme la page
    - Application Windows native : ouvre/relie la fenetre, remplit les
      champs via l'automatisation Windows (UI Automation), ferme la fenetre
-5. **Journalise** tout dans `logs/agent.log` et dans l'interface graphique.
+5. **Deplace** le document source traite avec succes vers `archive_folder`
+   (si configure), pour qu'il ne se melange pas avec ceux encore a faire.
+6. **Journalise** tout dans `logs/agent.log` et dans l'interface graphique.
 
-Important : ce programme se limite a **analyser et pre-remplir** les champs.
-Si ton entreprise dispose deja d'un outil qui deplace automatiquement les
-documents traites vers un dossier "Traites" (comme decrit par certains
-utilisateurs), cet agent n'interfere pas avec ca : il lit dans
-`source_folder` et ecrit le resultat rempli dans `output_folder`, sans
-toucher ni deplacer le document source original.
+Si ton entreprise dispose deja d'un outil qui classe les documents
+autrement, tu peux simplement laisser `archive_folder` vide dans
+`config.yaml` : le document source ne sera jamais deplace ni touche, seul
+le resultat rempli sera ecrit dans `output_folder` (pour les cibles
+PDF/Word/Excel).
 
 ## Connexion au site (formulaire web derriere un login)
 
@@ -101,8 +102,8 @@ reellement sur la souris/le clavier.
    ollama pull llava
    ```
 3. Copier `config.example.yaml` vers `config.yaml` et adapter :
-   - `source_folder` / `output_folder` (chemin local ou lecteur reseau
-     monte via ton VPN, ex: `Z:\Documents\A_traiter`)
+   - `source_folder` / `output_folder` / `archive_folder` (chemins locaux ou
+     lecteur reseau monte via ton VPN, ex: `Z:\Documents\A_traiter`)
    - la liste des `jobs` (un job = un type de document source + un
      formulaire cible + les champs a extraire/valider)
 4. Double-cliquer sur `run.bat` : il cree un environnement Python isole

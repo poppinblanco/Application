@@ -16,7 +16,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ai.ollama_client import OllamaClient  # noqa: E402
 from config import load_config  # noqa: E402
 from forms.validation import validate_fields  # noqa: E402
-from main import DocumentAnalysis, analyze_document, apply_document, process_job, run_watch_forever  # noqa: E402
+from main import (  # noqa: E402
+    DocumentAnalysis,
+    analyze_document,
+    apply_document,
+    archive_source_if_needed,
+    process_job,
+    run_watch_forever,
+)
 from utils.files import find_matching_files  # noqa: E402
 from utils.state import daily_limit_reached, get_daily_count  # noqa: E402
 
@@ -526,6 +533,7 @@ class AgentGUI:
             if outcome == "interrompu":
                 self.step_queue.put(("interrupted", self.step_current.source_path.name))
                 return
+            archive_source_if_needed(self.config, self.step_job, self.step_current.source_path, outcome)
             self.step_pos += 1
             self.step_queue.put(("applied", f"{self.step_current.source_path.name} ({outcome})"))
         except Exception as exc:  # noqa: BLE001

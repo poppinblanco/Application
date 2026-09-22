@@ -89,6 +89,11 @@ class AppConfig:
     # (None = illimite). Une fois la limite atteinte, l'agent s'arrete de
     # traiter de nouveaux documents ; le compteur repart a zero le lendemain.
     daily_limit: int | None = None
+    # Dossier ou le document source est deplace une fois traite avec succes
+    # (None = jamais deplace, comportement d'origine). Indispensable pour le
+    # mode automatique : sans deplacement, les documents traites resteraient
+    # melanges avec ceux encore a faire dans source_folder.
+    archive_folder: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -195,5 +200,6 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
         ),
         jobs=[_parse_job(j) for j in raw.get("jobs", [])],
         daily_limit=int(raw["daily_limit"]) if raw.get("daily_limit") not in (None, "") else None,
+        archive_folder=raw["archive_folder"] if raw.get("archive_folder") not in (None, "") else None,
         raw=raw,
     )

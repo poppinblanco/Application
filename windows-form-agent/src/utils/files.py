@@ -9,7 +9,11 @@ connecte et le lecteur deja monte avant de lancer l'agent.
 """
 from __future__ import annotations
 
+import logging
+import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_folder_reachable(folder: str | Path) -> Path:
@@ -28,3 +32,27 @@ def ensure_folder_reachable(folder: str | Path) -> Path:
 def find_matching_files(folder: str | Path, pattern: str) -> list[Path]:
     folder = ensure_folder_reachable(folder)
     return sorted(folder.glob(pattern))
+
+
+def move_to_archive(source_path: str | Path, archive_folder: str | Path) -> Path:
+    """Deplace le document source vers `archive_folder` une fois traite avec
+    succes, pour qu'il ne se melange pas avec les documents encore a faire
+    et ne soit jamais retraite.
+
+    Si un fichier du meme nom existe deja dans le dossier d'archive (rare,
+    mais possible si le meme nom de fichier revient), un suffixe numerote
+    est ajoute plutot que d'ecraser le fichier existant.
+    """
+    source_path = Path(source_path)
+    archive_folder = Path(archive_folder)
+    archive_folder.mkdir(parents=True, exist_ok=True)
+
+    destination = archive_folder / source_path.name
+    counter = 1
+    while destination.exists():
+        destination = archive_folder / f"{source_path.stem}_{counter}{source_path.suffix}"
+        counter += 1
+
+    shutil.move(str(source_path), str(destination))
+    logger.info("Document source deplace vers '%s'.", destination)
+    return destination

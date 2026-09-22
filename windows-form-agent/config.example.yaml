@@ -5,8 +5,19 @@
 # "\\serveur-vpn\partage\clients").
 source_folder: "Z:\\Documents\\A_traiter"
 
-# Dossier ou sont deposes les documents une fois remplis et valides.
+# Dossier ou est enregistree la COPIE remplie du document (uniquement pour
+# les cibles pdf_form / docx_template / xlsx_template -- sans effet pour
+# les cibles web_form / desktop_app, qui n'ont pas de "copie" a proprement
+# parler).
 output_folder: "Z:\\Documents\\Traites"
+
+# Dossier ou le DOCUMENT SOURCE original est deplace une fois traite avec
+# succes, quelle que soit la cible (PDF, Word/Excel, page web, appli
+# Windows). Indispensable pour le mode automatique : sans ca, les
+# documents deja traites resteraient melanges avec ceux encore a faire
+# dans source_folder. Laisse vide ou supprime la ligne pour ne jamais
+# deplacer le document source (il reste alors dans source_folder).
+archive_folder: "Z:\\Documents\\Deja_traite"
 
 # Surveillance continue du dossier source : utile quand tu travailles a
 # distance sur un dossier partage (VPN) et veux que les nouveaux documents
