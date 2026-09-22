@@ -29,6 +29,7 @@ class DesktopFormResult:
     filled_controls: list[str] = field(default_factory=list)
     missing_controls: list[str] = field(default_factory=list)
     message: str = ""
+    interrupted: bool = False
 
 
 class DesktopFormFiller:
@@ -55,9 +56,18 @@ class DesktopFormFiller:
         logger.info("Connecte a la fenetre existante : %s", window_title)
 
     def fill_form(
-        self, window_title: str, control_map: dict[str, str], values: dict[str, str]
+        self,
+        window_title: str,
+        control_map: dict[str, str],
+        values: dict[str, str],
+        stop_event=None,
     ) -> DesktopFormResult:
-        """control_map: {nom_du_champ: automation_id_ou_titre_du_controle}."""
+        """control_map: {nom_du_champ: automation_id_ou_titre_du_controle}.
+
+        `stop_event` (threading.Event) est verifie avant chaque controle :
+        en cas d'arret d'urgence, on s'arrete immediatement sans toucher aux
+        controles restants, en laissant la fenetre telle quelle.
+        """
         assert self._app is not None, "Appelle launch() ou connect() avant fill_form()."
 
         try:
@@ -73,6 +83,17 @@ class DesktopFormFiller:
         missing: list[str] = []
 
         for field_name, control_id in control_map.items():
+            if stop_event is not None and stop_event.is_set():
+                logger.warning(
+                    "Arret d'urgence : remplissage interrompu avant le controle '%s'.", field_name
+                )
+                return DesktopFormResult(
+                    success=False,
+                    filled_controls=filled,
+                    message="Interrompu par l'utilisateur (arret d'urgence) avant la fin du remplissage.",
+                    interrupted=True,
+                )
+
             value = values.get(field_name, "")
             if not value:
                 continue

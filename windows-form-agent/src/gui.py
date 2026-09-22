@@ -41,6 +41,9 @@ class AgentGUI:
         self.config_error = None
         self._load_config()
 
+        self.run_stop_event: threading.Event | None = None
+        self.run_thread: threading.Thread | None = None
+
         self.watch_stop_event: threading.Event | None = None
         self.watch_thread: threading.Thread | None = None
 
@@ -52,6 +55,7 @@ class AgentGUI:
         self.step_client: OllamaClient | None = None
         self.step_job = None
         self.step_running = False
+        self.step_stop_event: threading.Event | None = None
 
         self._build_widgets()
         self._poll_log_queue()
@@ -240,9 +244,20 @@ class AgentGUI:
     # --- Traitement unique (tous les documents d'un coup) -------------------
 
     def _on_run(self) -> None:
+        if self.run_thread is not None and self.run_thread.is_alive():
+            self._append_log("Arret d'urgence demande : le document en cours sera interrompu immediatement.")
+            if self.run_stop_event is not None:
+                self.run_stop_event.set()
+            return
+
         self._apply_daily_limit_from_ui()
-        self.run_button.state(["disabled"])
-        threading.Thread(target=self._run_agent, daemon=True).start()
+        self.run_button.configure(text="Arret d'urgence")
+        self.watch_button.state(["disabled"])
+        self.step_start_button.state(["disabled"])
+
+        self.run_stop_event = threading.Event()
+        self.run_thread = threading.Thread(target=self._run_agent, daemon=True)
+        self.run_thread.start()
 
     def _run_agent(self) -> None:
         handler = QueueLogHandler(self.log_queue)
@@ -261,14 +276,21 @@ class AgentGUI:
                 return
 
             for job in self._selected_jobs():
-                process_job(self.config, job, client, dry_run=self.dry_run_var.get())
+                process_job(self.config, job, client, dry_run=self.dry_run_var.get(), stop_event=self.run_stop_event)
 
             self.log_queue.put("Traitement termine.")
         except Exception as exc:  # noqa: BLE001
             self.log_queue.put(f"[ERREUR] {exc}")
         finally:
             root_logger.removeHandler(handler)
-            self.root.after(0, lambda: self.run_button.state(["!disabled"]))
+            self.root.after(0, self._reset_run_ui)
+
+    def _reset_run_ui(self) -> None:
+        self.run_button.configure(text="Lancer une fois")
+        self.watch_button.state(["!disabled"])
+        self.step_start_button.state(["!disabled"])
+        self.run_thread = None
+        self.run_stop_event = None
 
     # --- Surveillance continue -----------------------------------------------
 
@@ -281,6 +303,7 @@ class AgentGUI:
     def _start_watch(self) -> None:
         self._apply_daily_limit_from_ui()
         self.run_button.state(["disabled"])
+        self.step_start_button.state(["disabled"])
         self.watch_button.configure(text="Arreter la surveillance")
         self.watch_status_var.set("Mode automatique en chaine : en cours, dossier surveille en continu...")
 
@@ -326,6 +349,7 @@ class AgentGUI:
     def _reset_watch_ui(self) -> None:
         self.watch_button.configure(text="Demarrer la surveillance continue")
         self.run_button.state(["!disabled"])
+        self.step_start_button.state(["!disabled"])
         interval = self.config.watch.interval_seconds if self.config else 30
         self.watch_status_var.set(
             f"Mode automatique en chaine : arrete (verification toutes les {interval}s une fois demarre)"
@@ -351,6 +375,12 @@ class AgentGUI:
                 elif kind == "error":
                     self._append_log(f"[ERREUR] {payload}")
                     self._finish_step_mode()
+                elif kind == "interrupted":
+                    self._append_log(
+                        f"Arret d'urgence : remplissage de {payload} interrompu en cours de route. "
+                        "La page/fenetre a ete laissee ouverte, verifie-la avant de continuer."
+                    )
+                    self._finish_step_mode()
                 elif kind == "done":
                     self.step_status_var.set("Mode pas-a-pas termine : tous les documents ont ete traites.")
                     self._finish_step_mode()
@@ -368,6 +398,7 @@ class AgentGUI:
             return
 
         self.step_job = jobs[0]
+        self.step_stop_event = threading.Event()
         self.step_start_button.state(["disabled"])
         self.run_button.state(["disabled"])
         self.watch_button.state(["disabled"])
@@ -448,7 +479,10 @@ class AgentGUI:
 
     def _do_step_fill(self) -> None:
         try:
-            outcome = apply_document(self.config, self.step_current)
+            outcome = apply_document(self.config, self.step_current, stop_event=self.step_stop_event)
+            if outcome == "interrompu":
+                self.step_queue.put(("interrupted", self.step_current.source_path.name))
+                return
             self.step_pos += 1
             self.step_queue.put(("applied", f"{self.step_current.source_path.name} ({outcome})"))
         except Exception as exc:  # noqa: BLE001
@@ -471,12 +505,15 @@ class AgentGUI:
         threading.Thread(target=self._run_step_analysis, daemon=True).start()
 
     def _on_step_stop(self) -> None:
-        self._append_log("Mode pas-a-pas arrete par l'utilisateur.")
+        self._append_log("Mode pas-a-pas arrete par l'utilisateur (arret d'urgence si un remplissage etait en cours).")
+        if self.step_stop_event is not None:
+            self.step_stop_event.set()
         self._finish_step_mode()
 
     def _finish_step_mode(self) -> None:
         self.step_running = False
         self.step_current = None
+        self.step_stop_event = None
         self.step_fill_button.state(["disabled"])
         self.step_skip_button.state(["disabled"])
         self.step_stop_button.state(["disabled"])
@@ -485,8 +522,12 @@ class AgentGUI:
         self.watch_button.state(["!disabled"])
 
     def _on_close(self) -> None:
+        if self.run_stop_event is not None:
+            self.run_stop_event.set()
         if self.watch_stop_event is not None:
             self.watch_stop_event.set()
+        if self.step_stop_event is not None:
+            self.step_stop_event.set()
         self.step_running = False
         self.root.destroy()
 

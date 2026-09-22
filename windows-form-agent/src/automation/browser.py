@@ -32,6 +32,7 @@ class WebFormResult:
     filled_fields: list[str]
     missing_selectors: list[str]
     message: str
+    interrupted: bool = False
 
 
 class BrowserSession:
@@ -102,14 +103,38 @@ class BrowserSession:
         submit_selector: str | None = None,
         success_selector: str | None = None,
         timeout_ms: int = 15000,
+        stop_event=None,
     ) -> WebFormResult:
-        """Ouvre une page, remplit les champs indiques, soumet, valide, ferme la page."""
+        """Ouvre une page, remplit les champs indiques, soumet, valide, ferme la page.
+
+        `stop_event` (threading.Event) est verifie avant chaque champ et avant
+        la validation finale : si l'utilisateur declenche l'arret d'urgence en
+        cours de route, on s'arrete immediatement sans cliquer sur Valider, et
+        la page est laissee ouverte (non fermee) pour que l'utilisateur puisse
+        l'inspecter ou la corriger lui-meme.
+        """
         page = self.open_page(url)
         filled: list[str] = []
         missing: list[str] = []
+        interrupted = False
 
         try:
             for field_name, selector in field_selectors.items():
+                if stop_event is not None and stop_event.is_set():
+                    interrupted = True
+                    logger.warning(
+                        "Arret d'urgence : remplissage interrompu avant le champ '%s'. "
+                        "Page laissee ouverte pour verification.",
+                        field_name,
+                    )
+                    return WebFormResult(
+                        success=False,
+                        filled_fields=filled,
+                        missing_selectors=[],
+                        message="Interrompu par l'utilisateur (arret d'urgence) avant la fin du remplissage.",
+                        interrupted=True,
+                    )
+
                 value = values.get(field_name, "")
                 if not value:
                     continue
@@ -128,6 +153,19 @@ class BrowserSession:
                     message=f"Selecteurs introuvables sur la page : {missing}",
                 )
 
+            if stop_event is not None and stop_event.is_set():
+                interrupted = True
+                logger.warning(
+                    "Arret d'urgence : validation annulee. Page laissee ouverte pour verification."
+                )
+                return WebFormResult(
+                    success=False,
+                    filled_fields=filled,
+                    missing_selectors=[],
+                    message="Interrompu par l'utilisateur (arret d'urgence) juste avant la validation.",
+                    interrupted=True,
+                )
+
             if submit_selector:
                 page.locator(submit_selector).first.click(timeout=timeout_ms)
 
@@ -143,4 +181,5 @@ class BrowserSession:
                 message="Formulaire rempli et soumis avec succes.",
             )
         finally:
-            self.close_page(page)
+            if not interrupted:
+                self.close_page(page)

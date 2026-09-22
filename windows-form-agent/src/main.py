@@ -87,30 +87,48 @@ def analyze_document(config: AppConfig, job: JobSpec, client: OllamaClient, sour
     return DocumentAnalysis(source_path=source_path, job=job, values=values, validation=validation)
 
 
-def apply_document(config: AppConfig, analysis: DocumentAnalysis) -> str:
-    """Remplit/soumet le formulaire cible pour un document deja analyse et valide."""
+def apply_document(config: AppConfig, analysis: DocumentAnalysis, stop_event=None) -> str:
+    """Remplit/soumet le formulaire cible pour un document deja analyse et valide.
+
+    `stop_event` (threading.Event), s'il est deja declenche ou se declenche en
+    cours de remplissage, interrompt immediatement l'action en cours (champ
+    par champ pour un formulaire web/desktop) au lieu d'attendre la fin du
+    document. Le document n'est alors pas compte dans le quota quotidien.
+    """
     if not analysis.can_apply:
         raise ValueError("Ce document n'a pas ete valide, impossible de le remplir.")
 
+    if stop_event is not None and stop_event.is_set():
+        logger.warning("[%s] Arret d'urgence : %s non traite.", analysis.job.name, analysis.source_path.name)
+        return "interrompu"
+
     try:
-        _apply_to_target(config, analysis.job, analysis.source_path, analysis.values)
+        interrupted = _apply_to_target(config, analysis.job, analysis.source_path, analysis.values, stop_event)
     except Exception:
         logger.exception(
             "[%s] Echec de remplissage du formulaire pour %s.", analysis.job.name, analysis.source_path.name
         )
         return "erreur"
 
+    if interrupted:
+        return "interrompu"
+
     increment_daily_counter()
     return "ok"
 
 
 def process_single_file(
-    config: AppConfig, job: JobSpec, client: OllamaClient, source_path: Path, dry_run: bool
+    config: AppConfig,
+    job: JobSpec,
+    client: OllamaClient,
+    source_path: Path,
+    dry_run: bool,
+    stop_event=None,
 ) -> str:
     """Traite un seul document de bout en bout (analyse + remplissage). Renvoie
-    un statut court ("ok", "invalide", "erreur"). Utilise par le mode traitement
-    unique et la surveillance continue ; le mode pas-a-pas utilise plutot
-    `analyze_document`/`apply_document` separement.
+    un statut court ("ok", "invalide", "erreur", "interrompu"). Utilise par le
+    mode traitement unique et la surveillance continue ; le mode pas-a-pas
+    utilise plutot `analyze_document`/`apply_document` separement.
     """
     analysis = analyze_document(config, job, client, source_path)
 
@@ -124,7 +142,7 @@ def process_single_file(
         logger.info("[%s] (dry-run) Valeurs extraites et valides : %s", job.name, analysis.values)
         return "ok"
 
-    return apply_document(config, analysis)
+    return apply_document(config, analysis, stop_event=stop_event)
 
 
 def process_job(
@@ -133,12 +151,15 @@ def process_job(
     client: OllamaClient,
     dry_run: bool,
     state: dict | None = None,
+    stop_event=None,
 ) -> int:
     """Traite tous les documents correspondant au job. Renvoie le nombre traite.
 
     Si `state` est fourni (mode surveillance), les documents deja traites et
     inchanges depuis sont ignores, et chaque document traite est marque dans
-    `state` (a sauvegarder par l'appelant).
+    `state` (a sauvegarder par l'appelant). Si `stop_event` est declenche
+    (arret d'urgence), le traitement s'arrete avant le prochain document (et
+    immediatement, champ par champ, a l'interieur du document en cours).
     """
     source_files = find_matching_files(config.source_folder, job.source_pattern)
     if not source_files:
@@ -147,6 +168,10 @@ def process_job(
 
     processed_count = 0
     for source_path in source_files:
+        if stop_event is not None and stop_event.is_set():
+            logger.warning("[%s] Arret d'urgence : traitement stoppe avant %s.", job.name, source_path.name)
+            break
+
         if state is not None and is_already_processed(state, source_path):
             continue
 
@@ -154,16 +179,19 @@ def process_job(
             _notify_daily_limit_once(config.daily_limit)
             break
 
-        outcome = process_single_file(config, job, client, source_path, dry_run)
+        outcome = process_single_file(config, job, client, source_path, dry_run, stop_event=stop_event)
         processed_count += 1
 
-        if state is not None and not dry_run:
+        if state is not None and not dry_run and outcome != "interrompu":
             mark_processed(state, source_path, outcome)
 
     return processed_count
 
 
-def _apply_to_target(config: AppConfig, job: JobSpec, source_path: Path, values: dict[str, str]) -> None:
+def _apply_to_target(
+    config: AppConfig, job: JobSpec, source_path: Path, values: dict[str, str], stop_event=None
+) -> bool:
+    """Renvoie True si l'action a ete interrompue par un arret d'urgence."""
     output_dir = Path(config.output_folder)
     target = job.target
 
@@ -206,7 +234,10 @@ def _apply_to_target(config: AppConfig, job: JobSpec, source_path: Path, values:
                 values=values,
                 submit_selector=target.submit_selector,
                 success_selector=target.success_selector,
+                stop_event=stop_event,
             )
+        if result.interrupted:
+            return True
         if result.success:
             logger.info("[%s] Formulaire web soumis avec succes pour %s", job.name, source_path.name)
         else:
@@ -220,7 +251,9 @@ def _apply_to_target(config: AppConfig, job: JobSpec, source_path: Path, values:
             filler.launch(target.app_path)
         else:
             filler.connect(target.window_title)
-        result = filler.fill_form(target.window_title, target.control_map, values)
+        result = filler.fill_form(target.window_title, target.control_map, values, stop_event=stop_event)
+        if result.interrupted:
+            return True
         if result.success:
             logger.info("[%s] Formulaire desktop rempli pour %s", job.name, source_path.name)
         else:
@@ -229,6 +262,8 @@ def _apply_to_target(config: AppConfig, job: JobSpec, source_path: Path, values:
 
     else:
         logger.error("[%s] Type de cible inconnu : %s", job.name, target.type)
+
+    return False
 
 
 def run_watch_forever(
@@ -263,7 +298,7 @@ def run_watch_forever(
         try:
             total = 0
             for job in jobs:
-                total += process_job(config, job, client, dry_run=dry_run, state=state)
+                total += process_job(config, job, client, dry_run=dry_run, state=state, stop_event=stop_event)
             save_state(state, state_path)
             if total:
                 logger.info("Cycle de surveillance termine : %d document(s) traite(s).", total)
