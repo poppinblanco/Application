@@ -5,3 +5,15 @@ dist
 *.local
 .DS_Store
 dev-dist
+
+# windows-form-agent (Python)
+windows-form-agent/.venv
+windows-form-agent/venv
+windows-form-agent/config.yaml
+windows-form-agent/logs
+windows-form-agent/build
+windows-form-agent/dist
+windows-form-agent/screenshots
+__pycache__
+*.pyc
+

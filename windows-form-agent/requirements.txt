@@ -1,0 +1,13 @@
+PyYAML>=6.0
+requests>=2.31
+pypdf>=4.2
+pdfplumber>=0.11
+pdf2image>=1.17
+pytesseract>=0.3.10
+python-docx>=1.1
+openpyxl>=3.1
+playwright>=1.44
+pywinauto>=0.6.8; platform_system == "Windows"
+pyautogui>=0.9.54
+mss>=9.0.1
+pillow>=10.3

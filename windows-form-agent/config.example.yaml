@@ -1,0 +1,68 @@
+# Copie ce fichier en "config.yaml" et adapte les valeurs a ton environnement.
+
+# Dossier source : peut etre un dossier local classique ou un lecteur reseau
+# monte via le VPN (ex: lettre mappee "Z:\Clients" ou chemin UNC
+# "\\serveur-vpn\partage\clients").
+source_folder: "Z:\\Documents\\A_traiter"
+
+# Dossier ou sont deposes les documents une fois remplis et valides.
+output_folder: "Z:\\Documents\\Traites"
+
+# IA locale (open source) via Ollama : https://ollama.com
+# Installer Ollama, puis lancer par exemple :
+#   ollama pull llama3.2        (analyse de texte)
+#   ollama pull llava           (lecture d'ecran / images, optionnel)
+ollama:
+  host: "http://localhost:11434"
+  text_model: "llama3.2"
+  vision_model: "llava"
+  timeout_seconds: 120
+
+# Navigateur utilise pour remplir des formulaires web.
+# Valeurs possibles : chromium, chrome, msedge, firefox
+# Internet Explorer n'est PAS supporte : ce navigateur est officiellement
+# retire par Microsoft depuis juin 2022 et ne recoit plus de mises a jour
+# de securite. Utilise Chrome, Firefox ou Edge a la place.
+browser:
+  channel: "msedge"
+  headless: false
+
+# Modele de formulaire : associe un type de document source a un formulaire
+# cible et a la liste des champs attendus. L'IA se sert de "fields" pour
+# savoir quoi extraire depuis le document source.
+jobs:
+  - name: "demande_remboursement"
+    source_pattern: "*facture*.pdf"
+    target:
+      type: "pdf_form"          # pdf_form | docx_template | xlsx_template | web_form | desktop_app
+      path: "modeles/remboursement.pdf"
+    fields:
+      - name: "nom_client"
+        required: true
+      - name: "date_facture"
+        required: true
+        regex: "^\\d{2}/\\d{2}/\\d{4}$"
+      - name: "montant_total"
+        required: true
+        regex: "^[0-9]+([.,][0-9]{1,2})?$"
+      - name: "numero_facture"
+        required: false
+
+  - name: "formulaire_web_exemple"
+    source_pattern: "*dossier*.docx"
+    target:
+      type: "web_form"
+      url: "https://exemple-intranet.local/formulaire"
+      field_selectors:
+        nom_client: "#nom"
+        date_facture: "#date"
+        montant_total: "#montant"
+      submit_selector: "#valider"
+      success_selector: ".confirmation"
+    fields:
+      - name: "nom_client"
+        required: true
+      - name: "date_facture"
+        required: true
+      - name: "montant_total"
+        required: true
