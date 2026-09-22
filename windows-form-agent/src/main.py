@@ -195,7 +195,11 @@ def _apply_to_target(config: AppConfig, job: JobSpec, source_path: Path, values:
         logger.info("[%s] Classeur Excel rempli et enregistre : %s", job.name, output_path)
 
     elif target.type == "web_form":
-        with BrowserSession(channel=config.browser.channel, headless=config.browser.headless) as session:
+        with BrowserSession(
+            channel=config.browser.channel,
+            headless=config.browser.headless,
+            profile_dir=config.browser.profile_dir,
+        ) as session:
             result = session.fill_and_submit_form(
                 url=target.url,
                 field_selectors=target.field_selectors,

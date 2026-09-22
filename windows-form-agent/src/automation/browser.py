@@ -7,13 +7,21 @@ il ne recoit plus de mises a jour de securite et aucun outil d'automatisation
 moderne (Playwright, Selenium 4+) ne le pilote plus. Utilise Chrome, Edge ou
 Firefox a la place (ou le mode "Internet Explorer" d'Edge si un vieux site
 interne l'exige vraiment, mais ce n'est pas gere ici).
+
+Connexion (login) : quand `profile_dir` est fourni, le navigateur utilise un
+profil persistant sur disque (cookies, session) au lieu d'une session vierge
+a chaque lancement. Concretement : la premiere fois, l'utilisateur se
+connecte manuellement dans la fenetre ouverte par l'agent ; tant que la
+session ne s'exprire pas cote serveur, les lancements suivants restent
+connectes automatiquement, sans jamais stocker de mot de passe.
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
-from playwright.sync_api import Browser, Page, sync_playwright
+from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 
 logger = logging.getLogger(__name__)
 
@@ -29,29 +37,43 @@ class WebFormResult:
 class BrowserSession:
     """Represente une session navigateur : peut ouvrir/fermer plusieurs pages."""
 
-    def __init__(self, channel: str = "msedge", headless: bool = False):
+    def __init__(
+        self,
+        channel: str = "msedge",
+        headless: bool = False,
+        profile_dir: str | Path | None = None,
+    ):
         self.channel = channel
         self.headless = headless
+        self.profile_dir = Path(profile_dir) if profile_dir else None
         self._playwright = None
         self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
 
     def __enter__(self) -> "BrowserSession":
         self._playwright = sync_playwright().start()
-        if self.channel == "firefox":
-            self._browser = self._playwright.firefox.launch(headless=self.headless)
-        elif self.channel == "chromium":
-            self._browser = self._playwright.chromium.launch(headless=self.headless)
-        else:
+        browser_type = self._playwright.firefox if self.channel == "firefox" else self._playwright.chromium
+        launch_kwargs = {"headless": self.headless}
+        if self.channel not in ("firefox", "chromium"):
             # "chrome" ou "msedge" : utilise le vrai navigateur installe sur la machine.
-            self._browser = self._playwright.chromium.launch(
-                headless=self.headless, channel=self.channel
-            )
+            launch_kwargs["channel"] = self.channel
+
+        if self.profile_dir is not None:
+            self.profile_dir.mkdir(parents=True, exist_ok=True)
+            logger.info("Navigateur demarre avec le profil persistant '%s' (session/login conserves).", self.profile_dir)
+            self._context = browser_type.launch_persistent_context(str(self.profile_dir), **launch_kwargs)
+        else:
+            self._browser = browser_type.launch(**launch_kwargs)
+            self._context = self._browser.new_context()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
     def close(self) -> None:
+        if self._context is not None:
+            self._context.close()
+            self._context = None
         if self._browser is not None:
             self._browser.close()
             self._browser = None
@@ -61,8 +83,8 @@ class BrowserSession:
 
     def open_page(self, url: str) -> Page:
         """Ouvre une nouvelle page (onglet) sur l'URL donnee."""
-        assert self._browser is not None, "Le navigateur n'est pas demarre (utiliser 'with BrowserSession(...) as s:')"
-        page = self._browser.new_page()
+        assert self._context is not None, "Le navigateur n'est pas demarre (utiliser 'with BrowserSession(...) as s:')"
+        page = self._context.new_page()
         page.goto(url, wait_until="domcontentloaded")
         logger.info("Page ouverte : %s", url)
         return page

@@ -9,8 +9,10 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
-EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.example.yaml"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.yaml"
+EXAMPLE_CONFIG_PATH = PROJECT_ROOT / "config.example.yaml"
+DEFAULT_BROWSER_PROFILE_DIR = "browser_profile"
 
 # Internet Explorer est retire par Microsoft depuis le 15 juin 2022 : il ne
 # recoit plus de mises a jour de securite et n'est plus supporte par les
@@ -60,6 +62,10 @@ class OllamaConfig:
 class BrowserConfig:
     channel: str = "msedge"
     headless: bool = False
+    # Dossier de profil navigateur persistant (cookies/session conserves
+    # entre deux lancements, pour rester connecte apres un premier login
+    # manuel). None = session vierge a chaque lancement (jamais connecte).
+    profile_dir: str | None = DEFAULT_BROWSER_PROFILE_DIR
 
 
 @dataclass
@@ -118,6 +124,18 @@ def _parse_job(raw: dict[str, Any]) -> JobSpec:
     )
 
 
+def _resolve_profile_dir(raw_browser: dict[str, Any]) -> str | None:
+    if "profile_dir" not in raw_browser:
+        value = DEFAULT_BROWSER_PROFILE_DIR
+    else:
+        value = raw_browser["profile_dir"]
+        if value in (None, ""):
+            return None
+
+    path = Path(value)
+    return str(path if path.is_absolute() else PROJECT_ROOT / path)
+
+
 def validate_browser_channel(channel: str) -> str:
     normalized = (channel or "").strip().lower()
     if normalized in UNSUPPORTED_BROWSERS:
@@ -168,6 +186,7 @@ def load_config(path: str | os.PathLike | None = None) -> AppConfig:
         browser=BrowserConfig(
             channel=browser_channel,
             headless=bool(browser_raw.get("headless", False)),
+            profile_dir=_resolve_profile_dir(browser_raw),
         ),
         watch=WatchConfig(
             enabled=bool(watch_raw.get("enabled", False)),

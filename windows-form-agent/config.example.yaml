@@ -41,6 +41,14 @@ ollama:
 browser:
   channel: "msedge"
   headless: false
+  # Dossier ou le navigateur garde ta session (cookies/connexion), pour ne
+  # pas avoir a te reconnecter a chaque lancement si le site du formulaire
+  # necessite un identifiant/mot de passe. La premiere fois, connecte-toi
+  # normalement dans la fenetre ouverte par l'agent : les lancements
+  # suivants resteront connectes automatiquement (tant que la session ne
+  # s'expire pas cote serveur). Mets a "" pour repartir d'une session vierge
+  # a chaque lancement.
+  profile_dir: "browser_profile"
 
 # Modele de formulaire : associe un type de document source a un formulaire
 # cible et a la liste des champs attendus. L'IA se sert de "fields" pour

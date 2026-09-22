@@ -15,6 +15,7 @@ windows-form-agent/build
 windows-form-agent/dist
 windows-form-agent/screenshots
 windows-form-agent/.state
+windows-form-agent/browser_profile
 __pycache__
 *.pyc
 

@@ -44,6 +44,25 @@ utilisateurs), cet agent n'interfere pas avec ca : il lit dans
 `source_folder` et ecrit le resultat rempli dans `output_folder`, sans
 toucher ni deplacer le document source original.
 
+## Connexion au site (formulaire web derriere un login)
+
+Si le formulaire cible est une page web qui necessite de se connecter
+(identifiant/mot de passe), l'agent ne stocke jamais ce mot de passe. Il
+garde a la place ta **session de navigateur** dans un dossier local
+(`browser_profile/` par defaut, jamais envoye nulle part) :
+
+1. Au tout premier lancement, l'agent ouvre une fenetre de navigateur vide.
+2. Tu te connectes **manuellement**, une seule fois, comme d'habitude.
+3. Tant que tu ne te deconnectes pas et que la session ne s'expire pas cote
+   serveur, tous les lancements suivants (traitement unique, surveillance
+   continue, pas-a-pas) reutilisent cette session automatiquement -- plus
+   besoin de te reconnecter.
+
+Si le site te deconnecte a nouveau (session expiree), reconnecte-toi une
+fois manuellement dans la fenetre ouverte par l'agent, comme la premiere
+fois. Pour repartir d'une session vierge a chaque lancement, mets
+`browser.profile_dir` a `""` dans `config.yaml`.
+
 Un mode de secours "vision d'ecran" (`src/automation/screen_agent.py`) existe
 pour les cas ou aucune des methodes ci-dessus n'est possible (logiciel sans
 API d'automatisation) : il prend une capture d'ecran, demande a un modele de
